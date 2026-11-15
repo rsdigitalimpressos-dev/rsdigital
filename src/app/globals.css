@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-cyan: #00A0DC;
+    --brand-magenta: #E5007D;
+    --brand-yellow: #FFD200;
+    --brand-ink: #161616;
+    --brand-paper: #FFFFFF;
+    --brand-muted: #575757;
+    --brand-border: #E6E6E6;
+  }
+
+  body {
+    @apply bg-brand-paper text-brand-ink font-sans antialiased selection:bg-brand-cyan/20 selection:text-brand-ink;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    letter-spacing: -0.01em;
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  optgroup,
+  option {
+    font-family: inherit;
+    letter-spacing: inherit;
+  }
+}
+

@@ -1,0 +1,197 @@
+# Prompt para o Antigravity — Sistema de Pedidos de Livros Escolares
+
+> Copie tudo abaixo da linha e cole no Antigravity.
+
+---
+
+## Contexto
+
+Crie um sistema web simples de **pedidos de livros/apostilas escolares impressos** para a gráfica **RS Digital**. Uma pessoa (administradora) recebe pedidos de pais/responsáveis, imprime os livros a partir de arquivos (PDF) organizados por colégio → série → módulo, e avisa o cliente pelo WhatsApp quando o material está pronto para retirada.
+
+Hoje o processo é manual: a administradora recebe o pedido, procura a pasta certa e imprime livro por livro. O objetivo é:
+1. O cliente fazer o pedido sozinho, por um link.
+2. A administradora ver todos os pedidos numa lista, em ordem de chegada.
+3. A partir do pedido, abrir com 1 clique o arquivo certo para imprimir.
+4. Com 1 clique, avisar o cliente pelo WhatsApp que o pedido está pronto.
+
+O sistema deve ser **simples, rápido, responsivo (o cliente vai usar pelo celular)** e todo em **português do Brasil**.
+
+## Identidade visual — RS Digital (Proposta 03 · Gráfica CMYK)
+
+Nome da marca: **RS Digital**. Conceito: três círculos nas cores de tinta da impressora (ciano, magenta e amarelo) que se sobrepõem e formam novas cores, como na impressão.
+
+**Logo (ícone)** — use exatamente este SVG como componente (`<LogoIcon />`), também como favicon e ícone do app:
+
+```svg
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <rect width="120" height="120" rx="24" fill="#FFFFFF"/>
+  <circle cx="48" cy="48" r="26" fill="#00A0DC" style="mix-blend-mode:multiply"/>
+  <circle cx="72" cy="48" r="26" fill="#E5007D" style="mix-blend-mode:multiply"/>
+  <circle cx="60" cy="70" r="26" fill="#FFD200" style="mix-blend-mode:multiply"/>
+</svg>
+```
+
+**Logotipo completo:** ícone + texto "**RS** Digital" — "RS" em Sora 800 (extra bold) e "Digital" em Sora 300 (light), lado a lado. Em fundo claro o texto é preto `#161616`; em fundo escuro, branco.
+
+**Paleta:**
+| Cor | Hex | Uso |
+|---|---|---|
+| Ciano | `#00A0DC` | Destaques, ícones, marcadores |
+| Magenta | `#E5007D` | Botões principais e chamadas (texto branco) |
+| Amarelo | `#FFD200` | Selos e etiquetas (texto preto) |
+| Preto Tinta | `#161616` | Textos e logo |
+| Branco Papel | `#FFFFFF` | Fundos |
+| Cinza texto | `#575757` | Textos secundários |
+| Cinza borda | `#E6E6E6` | Bordas e divisórias |
+
+**Tipografia:** **Sora** (Google Fonts) em todo o sistema — 800 para títulos, 600 para rótulos, 400 para textos, 300 no "Digital" do logotipo.
+
+**Estilo:** fundo branco, visual limpo; cantos levemente arredondados (6px em botões e campos, 12px em cards); botão principal magenta com texto branco; status do pedido com cores da paleta (Recebido = ciano, Pronto = amarelo com texto preto, Entregue = cinza). Configure essas cores e a fonte no `tailwind.config` como tokens (`brand-cyan`, `brand-magenta`, `brand-yellow`, `brand-ink`).
+
+## Tela de abertura (splash) animada
+
+Ao abrir o link do pedido (e o painel admin), exibir uma tela de abertura antes do conteúdo:
+
+1. Fundo branco, ícone da logo centralizado (~120px).
+2. **O ícone gira** (rotação de 360°, ~1,2s, com easing suave). Durante o giro, os três círculos podem se aproximar do centro e voltar à posição, reforçando a ideia das tintas se misturando.
+3. **Ao terminar o giro**, o ícone desliza um pouco para a esquerda e o texto **"RS DIGITAL"** aparece à direita (fade + leve deslize), em Sora 800 no "RS" e 300 no "DIGITAL", preto `#161616`.
+4. Mantém o logotipo completo por ~0,8s e então a splash some (fade-out) revelando a página.
+5. Duração total: **no máximo ~2,5s**. Exibir só na primeira visita da sessão (guardar em `sessionStorage`), para não atrasar quem recarrega a página.
+6. Respeitar `prefers-reduced-motion`: nesse caso, sem giro — mostra o logotipo completo direto por ~0,8s.
+7. Implementar com CSS/Framer Motion, sem bibliotecas pesadas; a página carrega por trás enquanto a animação roda.
+
+## Stack sugerida
+
+- **Next.js (App Router) + TypeScript + Tailwind CSS**
+- **Supabase** (banco Postgres + autenticação do painel admin) — plano gratuito
+- Deploy na **Vercel** (plano gratuito)
+- Sem integrações pagas. O aviso de WhatsApp usa link `https://wa.me/55DDDNUMERO?text=...` (abre o WhatsApp com a mensagem pronta; a administradora só aperta enviar).
+
+## Fluxo geral
+
+1. Cliente manda mensagem no WhatsApp da loja → recebe resposta automática (configurada no próprio WhatsApp Business, fora do sistema) com o **link do formulário de pedido**.
+2. Cliente abre o link, preenche o pedido e envia.
+3. Cliente vê uma tela de confirmação com **número do pedido**, resumo, total e **data prevista de retirada** (data do pedido + 7 dias corridos), e um botão "Enviar comprovante pelo WhatsApp" (abre conversa com a loja com o resumo do pedido).
+4. Administradora acessa o **painel** (com login), vê o pedido na lista, abre os arquivos dos módulos e imprime.
+5. Ao terminar, clica em **"Pronto — avisar cliente"**: o status muda para Pronto e abre o WhatsApp do cliente com a mensagem de aviso.
+6. Quando o cliente retira, ela marca **"Entregue"**.
+
+## Banco de dados (Supabase)
+
+### `colegios`
+- id, nome, ativo (bool), criado_em
+
+### `series`
+- id, colegio_id (FK), nome (ex.: "5º ano"), ordem (int para ordenar), ativo
+
+### `modulos`
+- id, serie_id (FK), nome (ex.: "1º Trimestre"), ordem, valor (numeric, padrão 300.00), link_arquivo (URL do arquivo/pasta no Google Drive, OneDrive ou caminho de rede), ativo
+
+### `cupons`
+- id, codigo (único, maiúsculo), tipo (`percentual` | `valor`), desconto (numeric), validade (date, opcional), limite_usos (int, opcional), usos (int, padrão 0), ativo
+
+### `config`
+- nome_loja, whatsapp_loja, prazo_dias (padrão 7), endereco_retirada, horario_retirada
+- taxas_parcelamento: JSON com o percentual de juros por número de parcelas, ex.: `{"2": 4.5, "3": 5.8, ..., "12": 15.0}` (valores de exemplo; editáveis no painel)
+- mensagem_pronto: modelo da mensagem de aviso, com variáveis `{responsavel}`, `{aluno}`, `{serie}`, `{colegio}`, `{numero}`, `{endereco}`, `{horario}`
+
+### `pedidos`
+- id, numero (sequencial legível, ex.: 0001), criado_em
+- responsavel_nome, aluno_nome, whatsapp (só números, com DDD)
+- colegio_id, serie_id
+- forma_pagamento (`pix` | `dinheiro` | `debito` | `credito_avista` | `credito_parcelado`), parcelas (int, nulo se não parcelado)
+- subtotal, desconto, juros, total
+- cupom_id (nulo se não usou)
+- observacao
+- status (`recebido` | `em_producao` | `pronto` | `entregue` | `cancelado`)
+- pago (bool, padrão false)
+- previsao_retirada (date), pronto_em, entregue_em
+
+### `pedido_itens`
+- id, pedido_id (FK), modulo_id (FK), nome_modulo (cópia), valor (cópia do valor na hora do pedido), impresso (bool, padrão false)
+
+**Segurança (RLS):** público pode apenas **ler** colégios/séries/módulos ativos (sem expor `link_arquivo`), **validar cupom** e **criar** pedido. Todo o resto só para usuário autenticado (admin). Os cálculos de total, desconto e juros devem ser **refeitos no servidor** ao gravar o pedido (não confiar no valor vindo do navegador).
+
+## Tela 1 — Formulário de pedido (público, `/pedido`)
+
+Layout em uma página, mobile-first, com o logotipo da RS Digital no topo.
+
+Campos, nesta ordem:
+1. **Nome do responsável** (obrigatório)
+2. **Nome do aluno** (obrigatório)
+3. **WhatsApp** (obrigatório, máscara `(00) 00000-0000`)
+4. **Colégio** (lista dos colégios ativos)
+5. **Série** (lista filtrada pelo colégio escolhido)
+6. **Módulos** — caixas de seleção com os módulos da série escolhida, mostrando o valor de cada (ex.: "1º Trimestre — R$ 300,00"). Pelo menos 1 obrigatório. Opção "Selecionar todos".
+7. **Forma de pagamento** — Pix, Dinheiro, Débito, Crédito à vista, Crédito parcelado
+8. **Número de parcelas** — aparece só se "Crédito parcelado" (2x a 12x), mostrando o valor de cada parcela e o total com juros
+9. **Cupom de desconto** — campo + botão "Aplicar"; mostra "Cupom aplicado: −R$ X" ou "Cupom inválido/expirado"
+10. **Observação** (opcional)
+11. **Resumo fixo no rodapé**: subtotal, desconto, juros, **total**
+12. Caixa de aceite: "Autorizo o uso dos meus dados para processar este pedido e receber avisos pelo WhatsApp" (LGPD, obrigatória)
+13. Botão **Enviar pedido** (desabilita após clicar, para evitar pedido duplicado)
+
+**Regra de cálculo:** subtotal = soma dos módulos → aplica cupom → sobre o valor com desconto aplica os juros do parcelamento (se houver) → total.
+
+**Tela de confirmação:** número do pedido, resumo, total, previsão de retirada, endereço/horário de retirada e botão "Enviar comprovante pelo WhatsApp".
+
+## Tela 2 — Painel do administrador (`/admin`, com login)
+
+### Lista de pedidos (tela principal)
+- Tabela em **ordem de chegada** (mais antigo primeiro), mostrando: nº, data/hora, aluno, responsável, colégio, série, módulos, total, forma de pagamento, pago, status, previsão de retirada.
+- **Abas/filtros por status:** A fazer (recebido + em produção) | Prontos | Entregues | Todos. Padrão: "A fazer".
+- Filtros por colégio e série, e busca por nome/número.
+- **Alerta de prazo:** linha amarela quando faltar 2 dias ou menos para a previsão; vermelha quando passar do prazo sem estar pronto.
+- Contadores no topo: pedidos a fazer, atrasados, prontos aguardando retirada.
+
+### Detalhe do pedido (ao clicar na linha)
+- Todos os dados do pedido.
+- Lista dos módulos pedidos, cada um com:
+  - Botão **"Abrir arquivo"** → abre `link_arquivo` daquele módulo em nova aba, para imprimir.
+  - Caixa **"Impresso"** para ela marcar o que já imprimiu.
+- Botões de ação:
+  - **Em produção**
+  - **Marcar como pago** / desmarcar
+  - **Pronto — avisar cliente** → muda status para `pronto`, grava `pronto_em` e abre `https://wa.me/55{whatsapp}?text={mensagem_pronto preenchida}` em nova aba
+  - **Reenviar aviso** (para pedidos já prontos)
+  - **Entregue** → grava `entregue_em`
+  - **Cancelar pedido** (pede confirmação)
+
+Mensagem padrão de "pronto" (editável na configuração):
+> Olá, {responsavel}! 😊 O material do(a) {aluno} ({serie} – {colegio}), pedido nº {numero}, está pronto para retirada.
+> 📍 {endereco}
+> 🕒 {horario}
+> Obrigado pela preferência!
+
+### Visão "Imprimir por série" (ganho de tempo)
+- Agrupa os pedidos pendentes por **colégio → série → módulo**, mostrando quantas cópias de cada módulo precisam ser impressas (ex.: "Colégio X – 5º ano – 1º Trimestre: 7 cópias") e o botão "Abrir arquivo". Assim ela abre cada arquivo uma vez só e imprime em lote.
+
+### Cadastros
+- **Colégios, Séries e Módulos:** criar, editar, ativar/desativar, ordenar; em cada módulo informar valor e link do arquivo. Botão "Duplicar série" (copia os módulos para outra série/colégio, para agilizar o cadastro).
+- **Cupons:** criar/editar, ver quantas vezes foram usados.
+- **Configurações:** nome da loja, WhatsApp, endereço e horário de retirada, prazo em dias, taxas de parcelamento, modelo da mensagem de "pronto".
+- Botão **Exportar pedidos para Excel/CSV** (com filtro de período).
+
+## Dados de exemplo (seed)
+
+- 2 colégios ("Colégio Exemplo A", "Colégio Exemplo B"), cada um com 3 séries ("1º ano", "2º ano", "3º ano"), cada série com 4 módulos ("1º Trimestre" a "4º Trimestre") a **R$ 300,00** e `link_arquivo` de exemplo.
+- 1 cupom `BEMVINDO10` (10%).
+- Taxas de parcelamento de exemplo de 2x a 12x.
+
+## Requisitos não funcionais
+
+- Valores em reais formatados `R$ 0.000,00`; datas `dd/mm/aaaa`.
+- Funcionar bem no celular (formulário) e no computador (painel).
+- Mensagens de erro claras em português.
+- Código organizado, com README explicando como rodar localmente, criar o projeto no Supabase, configurar as variáveis de ambiente, criar o usuário administrador e publicar na Vercel.
+
+## Ordem de entrega
+
+1. Banco (tabelas, RLS, seed) + tokens da identidade visual (cores, fonte Sora, componente da logo)
+2. Splash animada + formulário público + confirmação
+3. Login e lista de pedidos no painel
+4. Detalhe do pedido + "Abrir arquivo" + "Pronto — avisar cliente"
+5. Cadastros e configurações
+6. Visão "Imprimir por série" e exportação
+
+Comece pelo item 1 e me mostre o plano antes de codificar.
