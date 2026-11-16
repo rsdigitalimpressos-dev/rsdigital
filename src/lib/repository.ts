@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import {
   createServiceRoleClient,
+  getSupabaseAnonKey,
+  getSupabaseUrl,
   hasValidServiceRoleKey,
   isSupabaseConfigured,
 } from "./supabase/client";
@@ -43,8 +45,8 @@ const DEFAULT_LOJA_CONFIG: LojaConfig = createInitialSeedState().config;
 export async function createServerSupabase() {
   const cookieStore = await cookies();
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl(),
+    getSupabaseAnonKey(),
     {
       cookies: {
         getAll() {
@@ -1954,19 +1956,28 @@ export async function salvarConfigServer(
       const supabase = await createAdminSupabase();
       const { data, error } = await supabase
         .from("config")
-        .update({
-          nome_loja: config.nome_loja.trim(),
-          whatsapp_loja: foneLoja,
-          prazo_dias: Math.max(1, Number(config.prazo_dias) || 7),
-          endereco_retirada: config.endereco_retirada.trim(),
-          horario_retirada: config.horario_retirada.trim(),
-          taxas_parcelamento: config.taxas_parcelamento,
-          mensagem_pronto: config.mensagem_pronto,
-        })
-        .eq("id", 1)
+        .upsert(
+          {
+            id: 1,
+            nome_loja: config.nome_loja.trim(),
+            whatsapp_loja: foneLoja,
+            prazo_dias: Math.max(1, Number(config.prazo_dias) || 7),
+            endereco_retirada: config.endereco_retirada.trim(),
+            horario_retirada: config.horario_retirada.trim(),
+            taxas_parcelamento: config.taxas_parcelamento,
+            mensagem_pronto: config.mensagem_pronto,
+          },
+          { onConflict: "id" }
+        )
         .select("*")
         .single();
       if (error) {
+        if (error.code === "PGRST116" || error.code === "42501") {
+          return {
+            ok: false,
+            erro: "Permissão negada no Supabase ao salvar configurações. Verifique se a variável SUPABASE_SERVICE_ROLE_KEY está configurada na Vercel (Settings > Environment Variables) ou faça login com seu usuário do Supabase Auth.",
+          };
+        }
         return {
           ok: false,
           erro: error.message || "Erro ao salvar configurações.",

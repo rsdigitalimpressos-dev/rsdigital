@@ -381,7 +381,6 @@ export function AdminDashboard({
         setModulos(res.dados.modulos);
         if (res.dados.livros) setLivros(res.dados.livros);
         setCupons(res.dados.cupons);
-        setConfig(res.dados.config);
         setLancamentos(res.dados.lancamentos);
       } catch {
         // silêncio em atualização em segundo plano
@@ -8198,7 +8197,7 @@ export function AdminDashboard({
                   />
                 </div>
 
-                <div className="flex items-center gap-4 pt-2">
+                <div className="flex flex-wrap items-center gap-4 pt-2">
                   <button
                     type="submit"
                     disabled={salvandoConfig}
@@ -8206,6 +8205,17 @@ export function AdminDashboard({
                   >
                     {salvandoConfig ? "Salvando..." : "Salvar Configurações"}
                   </button>
+                  {avisoPainel && (
+                    <div
+                      className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                        avisoPainel.tipo === "ok"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                          : "bg-red-50 border-red-200 text-red-700"
+                      }`}
+                    >
+                      <span>{avisoPainel.texto}</span>
+                    </div>
+                  )}
                 </div>
               </form>
             )}

@@ -1,40 +1,52 @@
-import { createBrowserClient } from "@supabase/ssr";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+
+export function getSupabaseUrl() {
+  return (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+}
+
+export function getSupabaseAnonKey() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    ""
+  ).trim();
+}
+
+export function getSupabaseServiceRoleKey() {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    ""
+  ).trim();
+}
 
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = getSupabaseUrl();
+  const key = getSupabaseAnonKey();
   return Boolean(
     url &&
       key &&
-      url.startsWith("http") &&
-      !url.includes("seu-projeto.supabase.co") &&
-      !key.includes("sua-chave-anon-publica")
+      url !== "https://SEU-PROJETO.supabase.co" &&
+      !url.includes("SEU-PROJETO") &&
+      key !== "SUA-CHAVE-ANON-PUBLICA"
   );
 }
 
 export function hasValidServiceRoleKey(): boolean {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = getSupabaseServiceRoleKey();
   return Boolean(
-    serviceKey &&
-      serviceKey.trim().length > 20 &&
-      !serviceKey.includes("sua-chave-service-role-secreta")
-  );
-}
-
-export function createClientBrowser() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    isSupabaseConfigured() &&
+      serviceKey &&
+      serviceKey !== "SUA-CHAVE-SERVICE-ROLE-SECRETA"
   );
 }
 
 export function createServiceRoleClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = hasValidServiceRoleKey()
-    ? process.env.SUPABASE_SERVICE_ROLE_KEY!
-    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return createSupabaseClient(url, serviceKey, {
+  if (!hasValidServiceRoleKey()) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada.");
+  }
+  return createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -42,3 +54,18 @@ export function createServiceRoleClient() {
   });
 }
 
+export function createSupabaseClient() {
+  const url = getSupabaseUrl();
+  const key = getSupabaseAnonKey();
+
+  if (!url || !key) {
+    return null;
+  }
+
+  return createClient(url, key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+}

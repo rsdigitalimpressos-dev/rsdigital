@@ -1,4 +1,5 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import {
   createDefaultLancamentos,
@@ -13,11 +14,22 @@ import {
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DB_FILE = path.join(DATA_DIR, "local-db.json");
+const TMP_DATA_DIR = path.join(os.tmpdir(), "rs-digital-data");
+const TMP_DB_FILE = path.join(TMP_DATA_DIR, "local-db.json");
+
+let memoryDbFallback: LocalDatabaseState | null = null;
+
+function resolveReadableDbFile(): string | null {
+  if (fs.existsSync(TMP_DB_FILE)) return TMP_DB_FILE;
+  if (fs.existsSync(DB_FILE)) return DB_FILE;
+  return null;
+}
 
 export function readLocalDb(): LocalDatabaseState {
   try {
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, "utf-8");
+    const activeFile = resolveReadableDbFile();
+    if (activeFile) {
+      const raw = fs.readFileSync(activeFile, "utf-8");
       const parsed = JSON.parse(raw) as LocalDatabaseState;
       let alterado = false;
 
@@ -167,10 +179,14 @@ export function readLocalDb(): LocalDatabaseState {
       if (alterado) {
         writeLocalDb(parsed);
       }
+      memoryDbFallback = parsed;
       return parsed;
     }
   } catch (err) {
     console.warn("Aviso ao ler banco local de fallback, recriando seed:", err);
+  }
+  if (memoryDbFallback) {
+    return memoryDbFallback;
   }
   const initial = createInitialSeedState();
   writeLocalDb(initial);
@@ -178,12 +194,23 @@ export function readLocalDb(): LocalDatabaseState {
 }
 
 export function writeLocalDb(state: LocalDatabaseState): void {
+  memoryDbFallback = state;
+  const serialized = JSON.stringify(state, null, 2);
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    fs.writeFileSync(DB_FILE, JSON.stringify(state, null, 2), "utf-8");
+    fs.writeFileSync(DB_FILE, serialized, "utf-8");
+    return;
+  } catch {
+    // Em ambientes serverless read-only (ex: Vercel /var/task), faz fallback para /tmp
+  }
+  try {
+    if (!fs.existsSync(TMP_DATA_DIR)) {
+      fs.mkdirSync(TMP_DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(TMP_DB_FILE, serialized, "utf-8");
   } catch (err) {
-    console.warn("Não foi possível persistir arquivo .data/local-db.json:", err);
+    console.warn("Não foi possível persistir arquivo local-db.json:", err);
   }
 }
