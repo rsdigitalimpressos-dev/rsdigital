@@ -16,7 +16,6 @@ import {
   Printer,
   RotateCcw,
   Search,
-  Send,
   Trash2,
   X,
 } from "lucide-react";
@@ -80,6 +79,46 @@ function gerarCodigoOrcamento() {
   return `ORC-${dia}${mes}-${sufixo}`;
 }
 
+/** Copia texto com fallback garantido mesmo quando navigator.clipboard falha */
+async function copiarParaTransferencia(texto: string): Promise<boolean> {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    }
+  } catch {
+    // continua para fallback
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = texto;
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+function formatarSerieCurtaOrcamento(serieNome?: string): string {
+  const sNome = (serieNome || "").trim();
+  if (!sNome) return "";
+  return sNome
+    .replace(/ensino\s+fundamental/gi, "EF")
+    .replace(/ensino\s+m[eé]dio/gi, "EM")
+    .replace(/educa[cç][aã]o\s+infantil/gi, "EI")
+    .replace(/[—–-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function AdminOrcamentosSection({
   orcamentos,
   setOrcamentos,
@@ -97,6 +136,11 @@ export function AdminOrcamentosSection({
   const [convertendoId, setConvertendoId] = useState<string | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
   const [msgListaCopiada, setMsgListaCopiada] = useState(false);
+
+  // Controle de qual orçamento está com o "Ver mais" expandido
+  const [orcamentoExpandidoId, setOrcamentoExpandidoId] = useState<
+    string | null
+  >(null);
 
   // Estado do Construtor / Editor de Orçamento dentro do Admin
   const [construtorAberto, setConstrutorAberto] = useState(false);
@@ -329,6 +373,7 @@ export function AdminOrcamentosSection({
     setDescontoManualStr(orc.desconto > 0 ? String(orc.desconto) : "");
     setObservacao(orc.observacao || "");
     setConstrutorAberto(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const toggleModulo = (id: string) => {
@@ -695,41 +740,41 @@ export function AdminOrcamentosSection({
   const qtdEnviados = orcamentos.filter((o) => o.status === "enviado").length;
   const qtdAprovados = orcamentos.filter((o) => o.status === "aprovado").length;
 
+  const urlSolicitacao =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/orcamento`
+      : "https://rsdigital.vercel.app/orcamento";
+
   return (
     <div className="space-y-5">
       {/* Barra de Atalhos Rápidos para Atendimento no WhatsApp */}
       <div className="bg-white border border-brand-border/80 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-0.5">
-          <span className="text-xs font-extrabold text-brand-ink block">
-            Ferramentas de Orçamento (Atendimento & Painel Admin)
-          </span>
-          <span className="text-[11px] text-brand-muted block">
-            Envie o link para o cliente preencher a escola/série/módulo ou monte o orçamento diretamente aqui no Admin.
-          </span>
-        </div>
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F8FAFC] border border-brand-border text-xs text-brand-ink max-w-full">
+            <Link2 className="w-3.5 h-3.5 text-brand-cyan shrink-0" />
+            <span className="truncate font-mono text-[11px] select-all">
+              {urlSolicitacao}
+            </span>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={async () => {
               const url = `${window.location.origin}/orcamento`;
-              const msg = `Olá! 😊 Para prepararmos o seu orçamento rapidinho na *${config.nome_loja}*, preencha o colégio, a série e os módulos neste link:\n👉 ${url}`;
-              try {
-                await navigator.clipboard.writeText(msg);
+              const ok = await copiarParaTransferencia(url);
+              if (ok) {
                 setLinkCopiado(true);
+                exibirAviso("ok", `Link copiado: ${url}`);
                 setTimeout(() => setLinkCopiado(false), 2500);
-              } catch {
-                // ignora
+              } else {
+                exibirAviso("erro", `Copie manualmente: ${url}`);
               }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold cursor-pointer transition-colors"
-            title="Copia uma mensagem pronta com o link /orcamento para mandar ao cliente no WhatsApp"
           >
-            <Link2 className="w-3.5 h-3.5 text-brand-cyan" />
+            <Copy className="w-3.5 h-3.5 text-brand-cyan" />
             <span>
-              {linkCopiado
-                ? "Link copiado p/ WhatsApp!"
-                : "Copiar Link de Solicitação"}
+              {linkCopiado ? "Link Copiado!" : "Copiar Link de Solicitação"}
             </span>
           </button>
 
@@ -738,42 +783,42 @@ export function AdminOrcamentosSection({
             onClick={async () => {
               const msg = [
                 `Olá! 😊 Tudo bem? Seja bem-vindo(a) à *${config.nome_loja}*!`,
-                `Para passarmos o seu orçamento de material escolar, informe por favor:`,
+                `Para passarmos o seu orçamento de material escolar, preencha neste link rápido:`,
+                `👉 ${window.location.origin}/orcamento`,
                 ``,
+                `Ou, se preferir, responda por aqui:`,
                 `1️⃣ *Seu Nome:*`,
                 `2️⃣ *Colégio:*`,
                 `3️⃣ *Série / Ano:*`,
                 `4️⃣ *Módulos desejados:*`,
                 `5️⃣ *Forma de pagamento preferida:*`,
               ].join("\n");
-              try {
-                await navigator.clipboard.writeText(msg);
+              const ok = await copiarParaTransferencia(msg);
+              if (ok) {
                 setMsgListaCopiada(true);
+                exibirAviso("ok", "Mensagem de atendimento copiada!");
                 setTimeout(() => setMsgListaCopiada(false), 2500);
-              } catch {
-                // ignora
               }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold cursor-pointer transition-colors"
-            title="Copia a lista em texto caso queira que o cliente responda direto na conversa do WhatsApp"
           >
-            <Copy className="w-3.5 h-3.5 text-brand-magenta" />
+            <MessageCircle className="w-3.5 h-3.5 text-brand-magenta" />
             <span>
               {msgListaCopiada
-                ? "Lista copiada!"
-                : "Copiar Lista p/ WhatsApp"}
+                ? "Mensagem Copiada!"
+                : "Copiar Mensagem p/ WhatsApp"}
             </span>
           </button>
-
-          <button
-            type="button"
-            onClick={abrirNovoOrcamentoAdmin}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-magenta hover:bg-brand-magenta/90 text-white text-xs font-bold shadow-2xs cursor-pointer transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Montar Orçamento no Admin</span>
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={abrirNovoOrcamentoAdmin}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-magenta hover:bg-brand-magenta/90 text-white text-xs font-bold shadow-2xs cursor-pointer transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Montar Orçamento no Admin</span>
+        </button>
       </div>
 
       {/* Construtor / Revisor de Orçamento Expansível dentro do Admin */}
@@ -785,7 +830,7 @@ export function AdminOrcamentosSection({
                 {codigoOrcamento}
               </span>
               <h2 className="text-base font-extrabold text-brand-ink">
-                Construção e Revisão de Orçamento (Admin)
+                Construção e Revisão de Orçamento
               </h2>
             </div>
 
@@ -812,7 +857,6 @@ export function AdminOrcamentosSection({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Coluna Esquerda do Construtor: Campos */}
             <div className="lg:col-span-8 space-y-5">
-              {/* 1. Cliente */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-brand-ink mb-1">
@@ -854,7 +898,6 @@ export function AdminOrcamentosSection({
                 </div>
               </div>
 
-              {/* 2. Colégio, Série e Módulos */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-brand-border">
                 <div>
                   <label className="block text-xs font-bold text-brand-ink mb-1">
@@ -907,7 +950,6 @@ export function AdminOrcamentosSection({
                 </div>
               </div>
 
-              {/* Lista de Módulos com Valores */}
               {serieId && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1054,7 +1096,6 @@ export function AdminOrcamentosSection({
                 </div>
               )}
 
-              {/* 3. Pagamento, Desconto Manual e Observação */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 border-t border-brand-border">
                 <div>
                   <label className="block text-xs font-bold text-brand-ink mb-1">
@@ -1236,14 +1277,12 @@ export function AdminOrcamentosSection({
                     onClick={async () => {
                       const salvo = await salvarOrcamentoAtual("enviado");
                       if (!salvo) return;
-                      try {
-                        await navigator.clipboard.writeText(
-                          montarTextoWhatsApp(salvo)
-                        );
+                      const ok = await copiarParaTransferencia(
+                        montarTextoWhatsApp(salvo)
+                      );
+                      if (ok) {
                         setResumoCopiado(true);
                         setTimeout(() => setResumoCopiado(false), 2500);
-                      } catch {
-                        // ignora
                       }
                     }}
                     className="py-2 px-2 bg-white hover:bg-gray-50 border border-brand-border rounded-xl text-[11px] font-bold text-brand-ink flex items-center justify-center gap-1 cursor-pointer"
@@ -1300,7 +1339,7 @@ export function AdminOrcamentosSection({
         </div>
       </div>
 
-      {/* Lista e Filtros de Orçamentos */}
+      {/* Lista Compacta e Organizada de Orçamentos */}
       <div className="bg-white border border-brand-border/80 rounded-2xl shadow-2xs overflow-hidden">
         <div className="px-4 py-3 border-b border-brand-border/70 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1 overflow-x-auto">
@@ -1396,7 +1435,7 @@ export function AdminOrcamentosSection({
                   Nenhum orçamento nesta visualização
                 </p>
                 <p className="text-xs text-brand-muted max-w-md mx-auto">
-                  Clique em <strong>Montar Orçamento no Admin</strong> para criar um orçamento ou envie o <strong>Link de Solicitação</strong> para o cliente preencher.
+                  Clique em <strong>Montar Orçamento no Admin</strong> ou envie o <strong>Link de Solicitação</strong> para o cliente preencher.
                 </p>
               </div>
             );
@@ -1409,107 +1448,59 @@ export function AdminOrcamentosSection({
                   orc.forma_pagamento === "credito_parcelado" && orc.parcelas
                     ? `Crédito ${orc.parcelas}x`
                     : FORMA_PAGAMENTO_LABEL[orc.forma_pagamento] || "Pix";
+                const expandido = orcamentoExpandidoId === orc.id;
+                const serieCurta = formatarSerieCurtaOrcamento(orc.serie_nome);
 
                 return (
                   <div
                     key={orc.id}
-                    className={`p-4 sm:p-5 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+                    className={`transition-colors ${
                       orc.status === "solicitado"
-                        ? "bg-amber-50/40 hover:bg-amber-50/70"
-                        : "hover:bg-gray-50/60"
+                        ? "bg-amber-50/40"
+                        : "bg-white hover:bg-gray-50/50"
                     }`}
                   >
-                    <div className="space-y-2 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-lg bg-brand-ink text-white text-xs font-extrabold tabular-nums">
+                    {/* LINHA PRINCIPAL COMPACTA (Apenas o essencial na tela) */}
+                    <div className="px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
+                        <span className="px-2.5 py-1 rounded-lg bg-brand-ink text-white text-xs font-extrabold tabular-nums shrink-0">
                           {orc.codigo}
                         </span>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                            orc.status === "solicitado"
-                              ? "bg-brand-yellow text-brand-ink"
-                              : orc.status === "aprovado"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : orc.status === "cancelado"
-                                  ? "bg-red-50 text-red-600 border border-red-200"
-                                  : "bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30"
-                          }`}
-                        >
-                          {orc.status === "solicitado"
-                            ? "Nova Solicitação · Verificar Valor"
-                            : orc.status === "aprovado"
-                              ? "Aprovado / Pedido Gerado"
-                              : orc.status === "cancelado"
-                                ? "Cancelado"
-                                : "Orçamento Enviado"}
-                        </span>
-                        <span className="text-xs text-brand-muted">
-                          {formatDateTimeBR(orc.criado_em)}
-                        </span>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <strong className="text-sm font-extrabold text-brand-ink truncate">
+                              {orc.cliente_nome}
+                            </strong>
+                            {orc.status === "solicitado" && (
+                              <span className="px-2 py-0.5 rounded-full bg-brand-yellow text-brand-ink text-[10px] font-extrabold shrink-0">
+                                Nova Solicitação
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-brand-muted truncate">
+                            <span className="font-semibold text-brand-ink/80">
+                              {orc.colegio_nome}
+                            </span>
+                            {serieCurta ? ` · ${serieCurta}` : ""} ·{" "}
+                            <span>
+                              {orc.itens.length}{" "}
+                              {orc.itens.length === 1 ? "módulo" : "módulos"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs">
-                        <strong className="text-sm font-extrabold text-brand-ink">
-                          {orc.cliente_nome}
-                        </strong>
-                        {orc.whatsapp && (
-                          <span className="text-brand-muted font-medium">
-                            WhatsApp: {maskWhatsApp(orc.whatsapp)}
+                      {/* Direita da Linha Principal: Valor + Status + WhatsApp + Ver mais */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <div className="text-right tabular-nums pr-1">
+                          <strong className="text-base font-extrabold text-brand-magenta block leading-tight">
+                            {formatCurrency(orc.total)}
+                          </strong>
+                          <span className="text-[11px] text-brand-muted font-semibold">
+                            {pagamentoLabel}
                           </span>
-                        )}
-                        {orc.email && (
-                          <span className="text-brand-muted font-medium">
-                            E-mail: {orc.email}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="text-xs text-brand-ink font-semibold">
-                        {orc.colegio_nome} ·{" "}
-                        <span className="text-brand-muted">
-                          {orc.serie_nome}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {orc.itens.map((it, idx) => (
-                          <span
-                            key={`${orc.id}-it-${idx}`}
-                            className="px-2.5 py-1 rounded-lg bg-white border border-brand-border text-[11px] font-semibold text-brand-ink"
-                          >
-                            {it.nome_modulo} ({formatCurrency(it.valor)})
-                          </span>
-                        ))}
-                      </div>
-
-                      {orc.observacao && (
-                        <p className="text-[11px] text-brand-muted italic">
-                          Obs.: {orc.observacao}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Coluna Direita: Valor + Ações */}
-                    <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end justify-between gap-3 shrink-0 border-t lg:border-t-0 pt-3 lg:pt-0 border-brand-border/60">
-                      <div className="text-left lg:text-right tabular-nums">
-                        <span className="text-[11px] text-brand-muted font-semibold block">
-                          {pagamentoLabel}
-                        </span>
-                        <strong className="text-xl font-extrabold text-brand-magenta">
-                          {formatCurrency(orc.total)}
-                        </strong>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => abrirParaRevisar(orc)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-brand-cyan/10 hover:bg-brand-cyan/20 text-brand-ink text-xs font-bold cursor-pointer"
-                          title="Abrir no construtor acima para conferir/ajustar valor e enviar"
-                        >
-                          <Edit3 className="w-3.5 h-3.5 text-brand-cyan" />
-                          <span>Revisar / Editar</span>
-                        </button>
+                        </div>
 
                         <select
                           value={orc.status}
@@ -1549,28 +1540,6 @@ export function AdminOrcamentosSection({
 
                         <button
                           type="button"
-                          onClick={() =>
-                            void baixarDocumentoOrcamentoPDF(orc, config)
-                          }
-                          title="Baixar PDF do Orçamento"
-                          className="p-2 rounded-lg border border-brand-border hover:border-brand-ink bg-white text-brand-ink cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5 text-brand-cyan" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            imprimirDocumentoOrcamento(orc, config)
-                          }
-                          title="Imprimir Orçamento"
-                          className="p-2 rounded-lg border border-brand-border hover:border-brand-ink bg-white text-brand-ink cursor-pointer"
-                        >
-                          <Printer className="w-3.5 h-3.5 text-brand-ink" />
-                        </button>
-
-                        <button
-                          type="button"
                           onClick={async () => {
                             if (orc.status === "solicitado") {
                               setOrcamentos((prev) =>
@@ -1593,7 +1562,7 @@ export function AdminOrcamentosSection({
                                 : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
                             window.open(url, "_blank", "noopener,noreferrer");
                           }}
-                          title="Enviar orçamento completo no WhatsApp do cliente"
+                          title="Enviar orçamento no WhatsApp do cliente"
                           className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
@@ -1601,118 +1570,248 @@ export function AdminOrcamentosSection({
 
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (orc.status === "solicitado") {
-                              setOrcamentos((prev) =>
-                                prev.map((item) =>
-                                  item.id === orc.id
-                                    ? { ...item, status: "enviado" }
-                                    : item
-                                )
-                              );
-                              void atualizarStatusOrcamentoAction(
-                                orc.id,
-                                "enviado"
-                              );
-                            }
-                            const colNome = orc.colegio_nome
-                              ? ` — ${orc.colegio_nome}`
-                              : "";
-                            const assunto = `Orçamento de Material Escolar (${orc.codigo})${colNome} | ${config.nome_loja}`;
-                            const corpo = montarTextoEmail(orc);
-                            window.location.href = `mailto:${encodeURIComponent(orc.email || "")}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-                          }}
-                          title="Enviar orçamento completo por E-mail"
-                          className="p-2 rounded-lg border border-brand-border hover:border-brand-ink bg-white text-brand-ink cursor-pointer"
+                          onClick={() =>
+                            setOrcamentoExpandidoId(expandido ? null : orc.id)
+                          }
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+                            expandido
+                              ? "bg-brand-ink text-white border-brand-ink"
+                              : "bg-white hover:bg-gray-50 text-brand-ink border-brand-border"
+                          }`}
                         >
-                          <Mail className="w-3.5 h-3.5 text-brand-cyan" />
-                        </button>
-
-                        {orc.status !== "aprovado" &&
-                          orc.colegio_id &&
-                          orc.serie_id &&
-                          orc.itens.length > 0 && (
-                            <button
-                              type="button"
-                              disabled={convertendoId === orc.id}
-                              onClick={async () => {
-                                setConvertendoId(orc.id);
-                                try {
-                                  const resPed = await enviarPedidoAction({
-                                    responsavel_nome: orc.cliente_nome,
-                                    aluno_nome: orc.cliente_nome,
-                                    whatsapp: orc.whatsapp || "11999999999",
-                                    colegio_id: orc.colegio_id,
-                                    serie_id: orc.serie_id,
-                                    modulo_ids: orc.itens.map(
-                                      (i) => i.modulo_id
-                                    ),
-                                    forma_pagamento: orc.forma_pagamento,
-                                    parcelas: orc.parcelas,
-                                    cupom_codigo: orc.cupom_codigo,
-                                    observacao:
-                                      orc.observacao ||
-                                      `Gerado a partir do orçamento ${orc.codigo}`,
-                                  });
-                                  if (!resPed.ok || !resPed.pedido) {
-                                    exibirAviso(
-                                      "erro",
-                                      resPed.erro ||
-                                        "Não foi possível converter em pedido."
-                                    );
-                                    return;
-                                  }
-                                  await atualizarStatusOrcamentoAction(
-                                    orc.id,
-                                    "aprovado"
-                                  );
-                                  setOrcamentos((prev) =>
-                                    prev.map((item) =>
-                                      item.id === orc.id
-                                        ? { ...item, status: "aprovado" }
-                                        : item
-                                    )
-                                  );
-                                  setPedidos((prev) => [
-                                    ...prev,
-                                    resPed.pedido!,
-                                  ]);
-                                  exibirAviso(
-                                    "ok",
-                                    `Orçamento ${orc.codigo} convertido no Pedido #${resPed.pedido.numero}!`
-                                  );
-                                } finally {
-                                  setConvertendoId(null);
-                                }
-                              }}
-                              className="px-2.5 py-1.5 rounded-lg bg-brand-ink hover:bg-brand-ink/90 text-white text-xs font-bold cursor-pointer"
-                              title="Transformar este orçamento em um pedido na fila de produção"
-                            >
-                              {convertendoId === orc.id
-                                ? "Gerando..."
-                                : "Gerar Pedido"}
-                            </button>
-                          )}
-
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setOrcamentos((prev) =>
-                              prev.filter((item) => item.id !== orc.id)
-                            );
-                            await excluirOrcamentoAction(orc.id);
-                            exibirAviso(
-                              "ok",
-                              `Orçamento ${orc.codigo} removido.`
-                            );
-                          }}
-                          title="Excluir orçamento"
-                          className="p-2 rounded-lg border border-brand-border hover:border-red-300 text-brand-muted hover:text-red-600 bg-white cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{expandido ? "Ocultar" : "Ver mais"}</span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                              expandido ? "rotate-180" : ""
+                            }`}
+                          />
                         </button>
                       </div>
                     </div>
+
+                    {/* ÁREA EXPANSÍVEL ("VER MAIS"): Todos os detalhes e botões de ação */}
+                    {expandido && (
+                      <div className="px-4 pb-4 pt-3 border-t border-brand-border/70 bg-[#FAFAFB] space-y-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          <div className="bg-white border border-brand-border rounded-xl p-3 space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">
+                              Contato do Cliente
+                            </span>
+                            <p className="font-bold text-brand-ink">
+                              {orc.cliente_nome}
+                            </p>
+                            <p className="text-brand-muted">
+                              WhatsApp:{" "}
+                              <strong className="text-brand-ink">
+                                {orc.whatsapp
+                                  ? maskWhatsApp(orc.whatsapp)
+                                  : "Não informado"}
+                              </strong>
+                            </p>
+                            {orc.email && (
+                              <p className="text-brand-muted truncate">
+                                E-mail:{" "}
+                                <strong className="text-brand-ink">
+                                  {orc.email}
+                                </strong>
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="bg-white border border-brand-border rounded-xl p-3 space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">
+                              Escola e Série Completa
+                            </span>
+                            <p className="font-bold text-brand-ink">
+                              {orc.colegio_nome}
+                            </p>
+                            <p className="text-brand-muted font-semibold">
+                              {orc.serie_nome}
+                            </p>
+                            <p className="text-[11px] text-brand-muted">
+                              Emitido em {formatDateTimeBR(orc.criado_em)} ·
+                              Validade: {orc.validade_dias} dias
+                            </p>
+                          </div>
+
+                          <div className="bg-white border border-brand-border rounded-xl p-3 space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">
+                              Módulos Incluídos ({orc.itens.length})
+                            </span>
+                            <div className="space-y-1 max-h-24 overflow-y-auto">
+                              {orc.itens.map((it, idx) => (
+                                <div
+                                  key={`${orc.id}-det-${idx}`}
+                                  className="flex items-center justify-between gap-2 text-xs"
+                                >
+                                  <span className="text-brand-ink font-medium truncate">
+                                    {it.nome_modulo}
+                                  </span>
+                                  <strong className="text-brand-ink shrink-0 tabular-nums">
+                                    {formatCurrency(it.valor)}
+                                  </strong>
+                                </div>
+                              ))}
+                            </div>
+                            {orc.observacao && (
+                              <p className="text-[11px] text-brand-muted italic pt-1 border-t border-brand-border">
+                                Obs.: {orc.observacao}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Barra de Ações Completa dentro do "Ver mais" */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => abrirParaRevisar(orc)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-cyan/15 hover:bg-brand-cyan/25 text-brand-ink text-xs font-bold cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-brand-cyan" />
+                              <span>Revisar / Editar Valor</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void baixarDocumentoOrcamentoPDF(orc, config)
+                              }
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5 text-brand-cyan" />
+                              <span>Baixar PDF</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                imprimirDocumentoOrcamento(orc, config)
+                              }
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold cursor-pointer"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-brand-ink" />
+                              <span>Imprimir</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (orc.status === "solicitado") {
+                                  setOrcamentos((prev) =>
+                                    prev.map((item) =>
+                                      item.id === orc.id
+                                        ? { ...item, status: "enviado" }
+                                        : item
+                                    )
+                                  );
+                                  void atualizarStatusOrcamentoAction(
+                                    orc.id,
+                                    "enviado"
+                                  );
+                                }
+                                const colNome = orc.colegio_nome
+                                  ? ` — ${orc.colegio_nome}`
+                                  : "";
+                                const assunto = `Orçamento de Material Escolar (${orc.codigo})${colNome} | ${config.nome_loja}`;
+                                const corpo = montarTextoEmail(orc);
+                                window.location.href = `mailto:${encodeURIComponent(orc.email || "")}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold cursor-pointer"
+                            >
+                              <Mail className="w-3.5 h-3.5 text-brand-cyan" />
+                              <span>Enviar por E-mail</span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {orc.status !== "aprovado" &&
+                              orc.colegio_id &&
+                              orc.serie_id &&
+                              orc.itens.length > 0 && (
+                                <button
+                                  type="button"
+                                  disabled={convertendoId === orc.id}
+                                  onClick={async () => {
+                                    setConvertendoId(orc.id);
+                                    try {
+                                      const resPed = await enviarPedidoAction({
+                                        responsavel_nome: orc.cliente_nome,
+                                        aluno_nome: orc.cliente_nome,
+                                        whatsapp: orc.whatsapp || "11999999999",
+                                        colegio_id: orc.colegio_id,
+                                        serie_id: orc.serie_id,
+                                        modulo_ids: orc.itens.map(
+                                          (i) => i.modulo_id
+                                        ),
+                                        forma_pagamento: orc.forma_pagamento,
+                                        parcelas: orc.parcelas,
+                                        cupom_codigo: orc.cupom_codigo,
+                                        observacao:
+                                          orc.observacao ||
+                                          `Gerado a partir do orçamento ${orc.codigo}`,
+                                      });
+                                      if (!resPed.ok || !resPed.pedido) {
+                                        exibirAviso(
+                                          "erro",
+                                          resPed.erro ||
+                                            "Não foi possível converter em pedido."
+                                        );
+                                        return;
+                                      }
+                                      await atualizarStatusOrcamentoAction(
+                                        orc.id,
+                                        "aprovado"
+                                      );
+                                      setOrcamentos((prev) =>
+                                        prev.map((item) =>
+                                          item.id === orc.id
+                                            ? { ...item, status: "aprovado" }
+                                            : item
+                                        )
+                                      );
+                                      setPedidos((prev) => [
+                                        ...prev,
+                                        resPed.pedido!,
+                                      ]);
+                                      exibirAviso(
+                                        "ok",
+                                        `Orçamento ${orc.codigo} convertido no Pedido #${resPed.pedido.numero}!`
+                                      );
+                                    } finally {
+                                      setConvertendoId(null);
+                                    }
+                                  }}
+                                  className="px-3.5 py-2 rounded-xl bg-brand-ink hover:bg-brand-ink/90 text-white text-xs font-bold cursor-pointer"
+                                >
+                                  {convertendoId === orc.id
+                                    ? "Gerando Pedido..."
+                                    : "Gerar Pedido"}
+                                </button>
+                              )}
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setOrcamentos((prev) =>
+                                  prev.filter((item) => item.id !== orc.id)
+                                );
+                                await excluirOrcamentoAction(orc.id);
+                                exibirAviso(
+                                  "ok",
+                                  `Orçamento ${orc.codigo} removido.`
+                                );
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-brand-border hover:border-red-300 text-brand-muted hover:text-red-600 bg-white text-xs font-bold cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Excluir</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
