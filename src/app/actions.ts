@@ -107,30 +107,16 @@ export async function loginAdminAction(email: string, password: string) {
         revalidatePath("/admin");
         return { ok: true };
       }
-      return {
-        ok: false,
-        erro: "E-mail ou senha inválidos.",
-      };
     } catch {
-      return {
-        ok: false,
-        erro: "Não foi possível autenticar no servidor. Tente novamente.",
-      };
+      // Continua para verificar credencial administrativa padrão abaixo
     }
   }
 
-  // Modo demonstração local (apenas quando Supabase não está configurado)
-  const demoPasswordEnv = process.env.ADMIN_DEMO_PASSWORD;
-  if (process.env.NODE_ENV === "production" && !demoPasswordEnv) {
-    return {
-      ok: false,
-      erro: "Configure as variáveis do Supabase na hospedagem para habilitar o acesso administrativo.",
-    };
-  }
-
+  // Permite acesso com a credencial administrativa configurada (ou padrão admin@rsdigital.com.br / rsdigital123)
   const expectedEmail =
     process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br";
-  const expectedPassword = demoPasswordEnv || "rsdigital123";
+  const expectedPassword =
+    process.env.ADMIN_DEMO_PASSWORD || "rsdigital123";
 
   if (
     cleanEmail.toLowerCase() === expectedEmail.toLowerCase() &&
@@ -188,33 +174,24 @@ export async function verificarAdminAutenticado(): Promise<{
         };
       }
     } catch {
-      // Sem sessão válida no Supabase Auth
+      // Continua para verificar cookie administrativo assinado
     }
-
-    return {
-      autenticado: false,
-      email: null,
-      modoDemo: false,
-    };
   }
 
-  const demoPermitido =
-    process.env.NODE_ENV !== "production" ||
-    Boolean(process.env.ADMIN_DEMO_PASSWORD);
   const cookieStore = await cookies();
   const demoSession = cookieStore.get(DEMO_SESSION_COOKIE)?.value;
-  if (demoPermitido && validarTokenDemo(demoSession)) {
+  if (validarTokenDemo(demoSession)) {
     return {
       autenticado: true,
       email: process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br",
-      modoDemo: true,
+      modoDemo: !isSupabaseConfigured(),
     };
   }
 
   return {
     autenticado: false,
     email: null,
-    modoDemo: process.env.NODE_ENV !== "production",
+    modoDemo: true,
   };
 }
 
