@@ -382,13 +382,13 @@ export function PedidoClient({
         Array.isArray(mod.disciplinas) && mod.disciplinas.length > 0
           ? mod.disciplinas
           : [
-              "Português",
-              "Matemática",
-              "História",
-              "Geografia",
-              "Ciências",
-              "Inglês",
-            ];
+            "Português",
+            "Matemática",
+            "História",
+            "Geografia",
+            "Ciências",
+            "Inglês",
+          ];
       const valorUnit = Number(
         (Number(mod.valor) / Math.max(1, discs.length)).toFixed(2)
       );
@@ -408,10 +408,10 @@ export function PedidoClient({
       const selecionados =
         Array.isArray(rawSelecionados) && rawSelecionados.length > 0
           ? disponiveis.filter(
-              (l) =>
-                rawSelecionados.includes(l.id) ||
-                rawSelecionados.includes(l.nome)
-            )
+            (l) =>
+              rawSelecionados.includes(l.id) ||
+              rawSelecionados.includes(l.nome)
+          )
           : disponiveis;
       const garantidos =
         selecionados.length > 0 ? selecionados : disponiveis;
@@ -428,10 +428,10 @@ export function PedidoClient({
       const valorEfetivo = todosSelecionados
         ? valorBase
         : Number(
-            garantidos
-              .reduce((acc, l) => acc + Number(l.valor), 0)
-              .toFixed(2)
-          );
+          garantidos
+            .reduce((acc, l) => acc + Number(l.valor), 0)
+            .toFixed(2)
+        );
 
       const textoResumoLivros = todosSelecionados
         ? "Todos os livros"
@@ -480,12 +480,12 @@ export function PedidoClient({
       const atuaisIds =
         Array.isArray(prev[mod.id]) && prev[mod.id].length > 0
           ? disp
-              .filter(
-                (l) =>
-                  prev[mod.id].includes(l.id) ||
-                  prev[mod.id].includes(l.nome)
-              )
-              .map((l) => l.id)
+            .filter(
+              (l) =>
+                prev[mod.id].includes(l.id) ||
+                prev[mod.id].includes(l.nome)
+            )
+            .map((l) => l.id)
           : disp.map((l) => l.id);
 
       const jaTem = atuaisIds.includes(livroId);
@@ -496,8 +496,8 @@ export function PedidoClient({
       const novos = jaTem
         ? atuaisIds.filter((item) => item !== livroId)
         : disp
-            .filter((l) => atuaisIds.includes(l.id) || l.id === livroId)
-            .map((l) => l.id);
+          .filter((l) => atuaisIds.includes(l.id) || l.id === livroId)
+          .map((l) => l.id);
       return {
         ...prev,
         [mod.id]: novos,
@@ -1028,7 +1028,7 @@ export function PedidoClient({
             {/* COLUNA ESQUERDA: Marca + Pedidos Recentes + Resumo do Material */}
             <aside className="lg:col-span-4 lg:sticky lg:top-8 space-y-4">
               {/* Bloco da Marca */}
-              <div className="bg-white border border-brand-border rounded-2xl p-6 space-y-3 shadow-xs">
+              <div className="bg-white border border-brand-border rounded-2xl p-4 sm:p-6 space-y-2.5 sm:space-y-3 shadow-xs">
                 <BrandLogo size="lg" />
                 <div className="pt-1 flex items-center justify-between border-t border-brand-border text-xs">
                   <span className="font-extrabold uppercase tracking-wider text-brand-ink">
@@ -1092,8 +1092,12 @@ export function PedidoClient({
                 </div>
               )}
 
-              {/* Card Coluna Material Selecionado */}
-              <div className="bg-white border border-brand-border rounded-2xl p-5 space-y-4 shadow-xs tabular-nums">
+              {/* Card Coluna Material Selecionado (No mobile só aparece quando já há material escolhido, evitando card vazio antes do formulário) */}
+              <div
+                className={`${
+                  modulosEscolhidosObjs.length === 0 ? "hidden lg:block" : "block"
+                } bg-white border border-brand-border rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs tabular-nums`}
+              >
                 <div className="flex items-center justify-between border-b border-brand-border pb-3">
                   <span className="text-xs font-extrabold uppercase tracking-wider text-brand-ink">
                     Material Selecionado
@@ -1381,25 +1385,23 @@ export function PedidoClient({
                           return (
                             <div
                               key={mod.id}
-                              className={`border rounded-xl transition-all bg-white ${
-                                selecionado
+                              className={`border rounded-xl transition-all bg-white ${selecionado
                                   ? "border-brand-ink ring-1 ring-brand-ink"
                                   : "border-brand-border hover:border-brand-ink/40"
-                              }`}
+                                }`}
                             >
                               {/* Linha Principal: Apenas o Módulo Central + Botão de Expandir Matérias */}
-                              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-3.5 sm:px-4 py-3 gap-2.5 sm:gap-3">
                                 <button
                                   type="button"
                                   onClick={() => toggleModulo(mod.id)}
-                                  className="flex items-center gap-3.5 min-w-0 flex-1 text-left cursor-pointer"
+                                  className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
                                 >
                                   <span
-                                    className={`w-4 h-4 rounded shrink-0 flex items-center justify-center border ${
-                                      selecionado
+                                    className={`w-4 h-4 rounded shrink-0 flex items-center justify-center border ${selecionado
                                         ? "bg-brand-ink border-brand-ink text-white"
                                         : "border-brand-border bg-white"
-                                    }`}
+                                      }`}
                                   >
                                     {selecionado && (
                                       <Check className="w-3 h-3 stroke-[3]" />
@@ -1417,7 +1419,7 @@ export function PedidoClient({
                                   />
 
                                   <div className="min-w-0">
-                                    <span className="text-sm font-bold text-brand-ink block">
+                                    <span className="text-sm font-bold text-brand-ink block truncate">
                                       {mod.nome}
                                     </span>
                                     <span className="text-[11px] text-brand-muted block truncate">
@@ -1428,7 +1430,7 @@ export function PedidoClient({
                                   </div>
                                 </button>
 
-                                <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center justify-end gap-2.5 sm:gap-3 shrink-0 ml-auto">
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -1436,15 +1438,17 @@ export function PedidoClient({
                                     }
                                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-brand-border hover:border-brand-ink text-[11px] font-bold text-brand-muted hover:text-brand-ink bg-[#FAFAFB] cursor-pointer transition-colors whitespace-nowrap"
                                   >
-                                    <span>
+                                    <span className="sm:hidden">
+                                      {materiasExpandidas ? "Ocultar" : "Matérias"}
+                                    </span>
+                                    <span className="hidden sm:inline">
                                       {materiasExpandidas
                                         ? "Ocultar matérias"
                                         : "Ver matérias"}
                                     </span>
                                     <ChevronDown
-                                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                        materiasExpandidas ? "rotate-180" : ""
-                                      }`}
+                                      className={`w-3.5 h-3.5 transition-transform duration-200 ${materiasExpandidas ? "rotate-180" : ""
+                                        }`}
                                     />
                                   </button>
 
@@ -1499,8 +1503,8 @@ export function PedidoClient({
                                     {resumo.disponiveis.map((livro) => {
                                       const ativo = selecionado
                                         ? resumo.selecionados.some(
-                                            (s) => s.id === livro.id
-                                          )
+                                          (s) => s.id === livro.id
+                                        )
                                         : true;
                                       return (
                                         <button
@@ -1513,19 +1517,17 @@ export function PedidoClient({
                                             }
                                             toggleLivroModulo(mod, livro.id);
                                           }}
-                                          className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs transition-all bg-white cursor-pointer text-left ${
-                                            ativo
+                                          className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs transition-all bg-white cursor-pointer text-left ${ativo
                                               ? "border-brand-border text-brand-ink font-semibold hover:border-brand-ink/50"
                                               : "border-brand-border text-brand-muted line-through opacity-65 hover:opacity-100"
-                                          }`}
+                                            }`}
                                         >
                                           <div className="flex items-center gap-2 min-w-0">
                                             <span
-                                              className={`w-3.5 h-3.5 rounded-xs shrink-0 flex items-center justify-center border ${
-                                                selecionado && ativo
+                                              className={`w-3.5 h-3.5 rounded-xs shrink-0 flex items-center justify-center border ${selecionado && ativo
                                                   ? "bg-brand-ink border-brand-ink text-white"
                                                   : "border-brand-border text-transparent"
-                                              }`}
+                                                }`}
                                             >
                                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                                             </span>
@@ -1566,8 +1568,8 @@ export function PedidoClient({
                           type="button"
                           onClick={() => setFormaPagamento(fp.value)}
                           className={`py-2.5 px-3 rounded-xl border text-center transition-all bg-white ${ativo
-                              ? "border-brand-ink ring-1 ring-brand-ink font-extrabold text-brand-ink"
-                              : "border-brand-border text-brand-muted hover:text-brand-ink"
+                            ? "border-brand-ink ring-1 ring-brand-ink font-extrabold text-brand-ink"
+                            : "border-brand-border text-brand-muted hover:text-brand-ink"
                             }`}
                         >
                           <span className="text-xs block">{fp.label}</span>
@@ -1715,8 +1717,8 @@ export function PedidoClient({
                   >
                     <span
                       className={`w-4 h-4 rounded shrink-0 flex items-center justify-center border ${aceiteLgpd
-                          ? "bg-brand-ink border-brand-ink text-white"
-                          : "border-brand-border bg-white"
+                        ? "bg-brand-ink border-brand-ink text-white"
+                        : "border-brand-border bg-white"
                         }`}
                     >
                       {aceiteLgpd && <Check className="w-3 h-3 stroke-[3]" />}
@@ -1923,16 +1925,16 @@ export function PedidoClient({
                                 <div key={etapa.key} className="space-y-1">
                                   <div
                                     className={`h-1.5 rounded-full ${concluida
-                                        ? ped.status === "pronto"
-                                          ? "bg-brand-yellow"
-                                          : "bg-brand-cyan"
-                                        : "bg-gray-200"
+                                      ? ped.status === "pronto"
+                                        ? "bg-brand-yellow"
+                                        : "bg-brand-cyan"
+                                      : "bg-gray-200"
                                       }`}
                                   />
                                   <p
                                     className={`text-[10px] leading-tight ${concluida
-                                        ? "font-bold text-brand-ink"
-                                        : "text-brand-muted"
+                                      ? "font-bold text-brand-ink"
+                                      : "text-brand-muted"
                                       }`}
                                   >
                                     {etapa.label}

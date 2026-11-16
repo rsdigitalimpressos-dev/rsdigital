@@ -2060,9 +2060,9 @@ export function AdminDashboard({
           {/* Header Mobile + Topbar Executiva */}
           <header className="bg-white border-b border-brand-border sticky top-0 z-20">
             {/* Barra Mobile Escura */}
-            <div className="lg:hidden bg-brand-ink text-white px-4 py-3 flex items-center justify-between">
+            <div className="lg:hidden bg-brand-ink text-white px-4 py-3 flex items-center justify-between gap-2">
               <BrandLogo size="sm" theme="dark" />
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <a
                   href="/pedido"
                   target="_blank"
@@ -2070,6 +2070,15 @@ export function AdminDashboard({
                   className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-white/10 text-white inline-flex items-center gap-1"
                 >
                   <span>/pedido</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                <a
+                  href="/orcamento"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-white/10 text-white inline-flex items-center gap-1"
+                >
+                  <span>/orçamento</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
                 <button
@@ -2414,8 +2423,8 @@ export function AdminDashboard({
                     )}
 
                     {/* Controles discretos à direita: Busca + Filtros (Popover) + Exportar */}
-                    <div className="flex flex-wrap items-center gap-2 py-2">
-                      <div className="relative w-48 sm:w-56">
+                    <div className="flex flex-wrap items-center gap-2 py-2 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:flex-none sm:w-56 min-w-[160px]">
                         <Search className="w-3.5 h-3.5 text-brand-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                           type="text"
@@ -2471,7 +2480,7 @@ export function AdminDashboard({
                             {filtrosPopoverAberto && (
                               <div
                                 onClick={(e) => e.stopPropagation()}
-                                className="absolute right-0 top-full mt-1.5 z-30 w-64 bg-white border border-brand-border rounded-xl shadow-xl p-3.5 space-y-3 text-xs"
+                                className="absolute right-0 top-full mt-1.5 z-30 w-64 max-w-[calc(100vw-2rem)] bg-white border border-brand-border rounded-xl shadow-xl p-3.5 space-y-3 text-xs"
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="font-semibold text-brand-ink">
@@ -3129,7 +3138,7 @@ export function AdminDashboard({
 
                                   {/* COLUNA 6: SELEÇÃO */}
                                   <div
-                                    className="relative flex items-center justify-start"
+                                    className="relative flex items-center justify-end lg:justify-start"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <button
@@ -3158,7 +3167,7 @@ export function AdminDashboard({
                                     </button>
 
                                     {acaoAberta && (
-                                      <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-brand-border rounded-xl shadow-lg py-1.5 z-30 text-left text-xs">
+                                      <div className="absolute right-0 top-full mt-1.5 w-48 max-w-[calc(100vw-2rem)] bg-white border border-brand-border rounded-xl shadow-lg py-1.5 z-30 text-left text-xs">
                                         {p.status !== "em_producao" && (
                                           <button
                                             type="button"
@@ -4610,8 +4619,8 @@ export function AdminDashboard({
                             ))}
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-2 flex-1 sm:flex-initial justify-end">
-                            <div className="relative min-w-[190px]">
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:flex-initial justify-end">
+                            <div className="relative flex-1 sm:flex-none min-w-[160px] sm:min-w-[190px]">
                               <Search className="w-3.5 h-3.5 text-brand-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                               <input
                                 type="text"

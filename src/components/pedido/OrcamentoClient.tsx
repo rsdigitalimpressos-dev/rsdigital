@@ -720,11 +720,11 @@ export function OrcamentoClient({
                             : "border-brand-border hover:border-brand-ink/40"
                         }`}
                       >
-                        <div className="flex items-center justify-between px-4 py-3 gap-3">
+                        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-3.5 sm:px-4 py-3 gap-2.5 sm:gap-3">
                           <button
                             type="button"
                             onClick={() => toggleModulo(mod.id)}
-                            className="flex items-center gap-3.5 min-w-0 flex-1 text-left cursor-pointer"
+                            className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
                           >
                             <span
                               className={`w-4 h-4 rounded shrink-0 flex items-center justify-center border ${
@@ -749,7 +749,7 @@ export function OrcamentoClient({
                             />
 
                             <div className="min-w-0">
-                              <span className="text-sm font-bold text-brand-ink block">
+                              <span className="text-sm font-bold text-brand-ink block truncate">
                                 {mod.nome}
                               </span>
                               <span className="text-[11px] text-brand-muted block truncate">
@@ -765,9 +765,12 @@ export function OrcamentoClient({
                             onClick={() =>
                               toggleExpandirMateriasModulo(mod.id)
                             }
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-brand-border hover:border-brand-ink text-[11px] font-bold text-brand-muted hover:text-brand-ink bg-[#FAFAFB] cursor-pointer transition-colors whitespace-nowrap shrink-0"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-brand-border hover:border-brand-ink text-[11px] font-bold text-brand-muted hover:text-brand-ink bg-[#FAFAFB] cursor-pointer transition-colors whitespace-nowrap shrink-0 ml-auto"
                           >
-                            <span>
+                            <span className="sm:hidden">
+                              {materiasExpandidas ? "Ocultar" : "Matérias"}
+                            </span>
+                            <span className="hidden sm:inline">
                               {materiasExpandidas
                                 ? "Ocultar matérias"
                                 : "Escolher matérias"}

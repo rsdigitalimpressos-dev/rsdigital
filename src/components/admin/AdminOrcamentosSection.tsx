@@ -746,17 +746,10 @@ export function AdminOrcamentosSection({
       : "https://rsdigital.vercel.app/orcamento";
 
   return (
-    <div className="space-y-5">
-      {/* Barra de Atalhos Rápidos para Atendimento no WhatsApp */}
-      <div className="bg-white border border-brand-border/80 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F8FAFC] border border-brand-border text-xs text-brand-ink max-w-full">
-            <Link2 className="w-3.5 h-3.5 text-brand-cyan shrink-0" />
-            <span className="truncate font-mono text-[11px] select-all">
-              {urlSolicitacao}
-            </span>
-          </div>
-
+    <div className="space-y-4 sm:space-y-5">
+      {/* Barra de Atalhos Rápidos (sem exibir a URL crua na tela) */}
+      <div className="bg-white border border-brand-border/80 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={async () => {
@@ -764,15 +757,15 @@ export function AdminOrcamentosSection({
               const ok = await copiarParaTransferencia(url);
               if (ok) {
                 setLinkCopiado(true);
-                exibirAviso("ok", `Link copiado: ${url}`);
+                exibirAviso("ok", "Link de solicitação copiado!");
                 setTimeout(() => setLinkCopiado(false), 2500);
               } else {
                 exibirAviso("erro", `Copie manualmente: ${url}`);
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold cursor-pointer transition-colors"
+            className="h-9 px-3.5 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
           >
-            <Copy className="w-3.5 h-3.5 text-brand-cyan" />
+            <Copy className="w-3.5 h-3.5 text-brand-cyan shrink-0" />
             <span>
               {linkCopiado ? "Link Copiado!" : "Copiar Link de Solicitação"}
             </span>
@@ -800,9 +793,9 @@ export function AdminOrcamentosSection({
                 setTimeout(() => setMsgListaCopiada(false), 2500);
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold cursor-pointer transition-colors"
+            className="h-9 px-3.5 rounded-xl border border-brand-border hover:border-brand-ink bg-white text-brand-ink text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
           >
-            <MessageCircle className="w-3.5 h-3.5 text-brand-magenta" />
+            <MessageCircle className="w-3.5 h-3.5 text-brand-magenta shrink-0" />
             <span>
               {msgListaCopiada
                 ? "Mensagem Copiada!"
@@ -814,9 +807,9 @@ export function AdminOrcamentosSection({
         <button
           type="button"
           onClick={abrirNovoOrcamentoAdmin}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-magenta hover:bg-brand-magenta/90 text-white text-xs font-bold shadow-2xs cursor-pointer transition-colors"
+          className="h-9 px-4 rounded-xl bg-brand-magenta hover:bg-brand-magenta/90 text-white text-xs font-bold shadow-2xs inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 shrink-0" />
           <span>Montar Orçamento no Admin</span>
         </button>
       </div>
@@ -1398,14 +1391,14 @@ export function AdminOrcamentosSection({
             })}
           </div>
 
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-3.5 h-3.5 text-brand-muted absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Buscar cliente, WhatsApp, código..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs bg-[#F8FAFC] border border-brand-border rounded-xl focus:outline-none focus:border-brand-cyan w-56 sm:w-64"
+              className="pl-8 pr-3 py-1.5 text-xs bg-[#F8FAFC] border border-brand-border rounded-xl focus:outline-none focus:border-brand-cyan w-full sm:w-64"
             />
           </div>
         </div>
@@ -1443,12 +1436,12 @@ export function AdminOrcamentosSection({
 
           return (
             <div>
-              {/* Cabeçalho das Colunas (Desktop) para organização visual */}
-              <div className="hidden lg:grid lg:grid-cols-12 gap-6 px-6 py-2.5 bg-[#F8FAFC] border-b border-brand-border/70 text-[11px] font-bold uppercase tracking-wider text-brand-muted">
+              {/* Cabeçalho das Colunas (Desktop) alinhado exatamente com os controles */}
+              <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-6 py-2.5 bg-[#F8FAFC] border-b border-brand-border/70 text-[11px] font-bold uppercase tracking-wider text-brand-muted items-center">
                 <div className="col-span-2">Orçamento</div>
                 <div className="col-span-4">Cliente & Material</div>
                 <div className="col-span-2 text-right">Valor / Pagamento</div>
-                <div className="col-span-2 text-center">Status</div>
+                <div className="col-span-2 text-right pr-2">Status</div>
                 <div className="col-span-2 text-right">Ações</div>
               </div>
 
@@ -1468,13 +1461,22 @@ export function AdminOrcamentosSection({
                       key={orc.id}
                       className="bg-white hover:bg-gray-50/50 transition-colors"
                     >
-                      {/* LINHA PRINCIPAL EM GRADE BEM ESPAÇADA */}
-                      <div className="px-4 sm:px-6 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-center">
-                        {/* Coluna 1: Código do Orçamento com cor de destaque suave */}
-                        <div className="lg:col-span-2 flex items-center">
-                          <span className="px-3 py-1 rounded-lg bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/25 text-xs font-extrabold tabular-nums">
+                      {/* LINHA PRINCIPAL (Mobile empilhado inteligente / Desktop 12 colunas alinhadas) */}
+                      <div className="px-4 sm:px-6 py-3.5 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 items-center">
+                        {/* Topo Mobile: Código à esquerda + Valor à direita | Desktop Coluna 1 */}
+                        <div className="flex items-center justify-between lg:col-span-2">
+                          <span className="inline-flex items-center h-7 px-2.5 rounded-lg bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/25 text-xs font-extrabold tabular-nums">
                             {orc.codigo}
                           </span>
+
+                          <div className="text-right tabular-nums lg:hidden">
+                            <strong className="text-sm font-extrabold text-brand-magenta block leading-tight">
+                              {formatCurrency(orc.total)}
+                            </strong>
+                            <span className="text-[11px] text-brand-muted font-semibold block">
+                              {pagamentoLabel}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Coluna 2: Cliente e Material */}
@@ -1494,8 +1496,8 @@ export function AdminOrcamentosSection({
                           </div>
                         </div>
 
-                        {/* Coluna 3: Valor e Forma de Pagamento (separado e alinhado) */}
-                        <div className="lg:col-span-2 lg:text-right tabular-nums">
+                        {/* Coluna 3 (Desktop): Valor e Forma de Pagamento */}
+                        <div className="hidden lg:block lg:col-span-2 text-right tabular-nums">
                           <strong className="text-base font-extrabold text-brand-magenta block leading-tight">
                             {formatCurrency(orc.total)}
                           </strong>
@@ -1504,8 +1506,8 @@ export function AdminOrcamentosSection({
                           </span>
                         </div>
 
-                        {/* Coluna 4: Status */}
-                        <div className="lg:col-span-2 flex lg:justify-center">
+                        {/* Colunas 4 e 5 agrupadas no Mobile e alinhadas na mesma altura (h-9) no Desktop */}
+                        <div className="lg:col-span-4 flex items-center justify-between lg:justify-end gap-2.5 pt-1 lg:pt-0">
                           <select
                             value={orc.status}
                             onChange={async (e) => {
@@ -1534,17 +1536,14 @@ export function AdminOrcamentosSection({
                                 );
                               }
                             }}
-                            className="w-full max-w-[140px] px-3 py-1.5 text-xs font-bold border border-brand-border rounded-lg bg-white text-brand-ink cursor-pointer"
+                            className="h-9 flex-1 lg:flex-none lg:w-[136px] px-3 text-xs font-bold border border-brand-border rounded-lg bg-white text-brand-ink cursor-pointer"
                           >
                             <option value="solicitado">Solicitado</option>
                             <option value="enviado">Enviado</option>
                             <option value="aprovado">Aprovado</option>
                             <option value="cancelado">Cancelado</option>
                           </select>
-                        </div>
 
-                        {/* Coluna 5: Botões WhatsApp e Ver mais bem espaçados */}
-                        <div className="lg:col-span-2 flex items-center lg:justify-end gap-3">
                           <button
                             type="button"
                             onClick={async () => {
@@ -1574,7 +1573,7 @@ export function AdminOrcamentosSection({
                               );
                             }}
                             title="Enviar orçamento no WhatsApp do cliente"
-                            className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shrink-0"
+                            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shrink-0 transition-colors"
                           >
                             <MessageCircle className="w-4 h-4" />
                           </button>
@@ -1586,7 +1585,7 @@ export function AdminOrcamentosSection({
                                 expandido ? null : orc.id
                               )
                             }
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                            className={`h-9 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                               expandido
                                 ? "bg-brand-ink text-white border-brand-ink"
                                 : "bg-white hover:bg-gray-50 text-brand-ink border-brand-border"
