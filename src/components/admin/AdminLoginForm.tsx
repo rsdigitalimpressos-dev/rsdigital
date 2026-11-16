@@ -48,9 +48,6 @@ export function AdminLoginForm({}: AdminLoginFormProps) {
 
   return (
     <>
-      {/* Sempre exibe o efeito de abertura da logomarca ao acessar a tela de login */}
-      <SplashScreen forceShow={true} />
-
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between relative overflow-hidden">
         {/* Luzes sutis da identidade CMYK ao fundo */}
         <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[260px] bg-gradient-to-r from-brand-cyan/15 via-brand-magenta/15 to-brand-yellow/20 blur-3xl rounded-full" />
@@ -68,7 +65,7 @@ export function AdminLoginForm({}: AdminLoginFormProps) {
           <motion.div
             initial={{ opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.45, delay: 2.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-[400px] bg-white border border-brand-border/90 rounded-3xl shadow-xl shadow-black/[0.04] p-8 sm:p-9 space-y-7"
           >
             {/* Cabeçalho com Logomarca Animada CMYK */}
@@ -77,8 +74,7 @@ export function AdminLoginForm({}: AdminLoginFormProps) {
                 initial={{ rotate: -180, scale: 0.8 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{
-                  duration: 0.8,
-                  delay: 2.15,
+                  duration: 0.6,
                   ease: [0.22, 1, 0.36, 1],
                 }}
                 className="w-16 h-16 rounded-2xl bg-white border border-brand-border/80 shadow-md shadow-black/5 flex items-center justify-center"

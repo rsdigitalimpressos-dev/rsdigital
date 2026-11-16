@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { ModuloCapaPreview } from "@/components/brand/ModuloCapaPreview";
+import { SplashScreen } from "@/components/brand/SplashScreen";
 import {
   Colegio,
   FormaPagamento,
@@ -494,7 +495,9 @@ export function OrcamentoClient({
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F7F9] text-brand-ink pb-16">
+    <>
+      <SplashScreen />
+      <div className="min-h-screen bg-[#F6F7F9] text-brand-ink pb-16">
       <header className="relative h-10 w-full border-b border-brand-border/60 overflow-hidden">
         <div className="absolute inset-0 flex">
           <div className="flex-1 bg-brand-cyan" />
@@ -933,6 +936,7 @@ export function OrcamentoClient({
           </button>
         </form>
       </main>
-    </div>
+      </div>
+    </>
   );
 }
