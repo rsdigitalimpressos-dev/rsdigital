@@ -24,8 +24,6 @@ import {
   ArrowRight,
   ExternalLink,
   Download,
-  Calculator,
-  ShoppingBag,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { ModuloCapaPreview } from "@/components/brand/ModuloCapaPreview";
@@ -1014,14 +1012,6 @@ export function PedidoClient({
             </button>
 
             <Link
-              href="/orcamento"
-              className="group inline-flex items-center justify-center gap-1.5 h-7 px-2.5 text-[11px] font-semibold leading-none text-white hover:text-brand-cyan bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 hover:border-brand-cyan/60 rounded-[6px] transition-all duration-150"
-            >
-              <Calculator className="w-3.5 h-3.5 text-brand-cyan shrink-0" />
-              <span className="leading-none">Fazer orçamento</span>
-            </Link>
-
-            <Link
               href="/admin"
               className="group inline-flex items-center justify-center gap-1.5 h-7 px-2.5 text-[11px] font-semibold leading-none text-white/90 hover:text-brand-ink bg-white/[0.08] hover:bg-brand-yellow border border-white/15 hover:border-brand-yellow rounded-[6px] transition-all duration-150"
               title="Painel Administrativo"
@@ -1032,28 +1022,8 @@ export function PedidoClient({
           </div>
         </header>
 
-        {/* Seletor Superior de Página: PEDIDO vs ORÇAMENTO */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5">
-          <div className="bg-white border border-brand-border rounded-2xl p-1.5 grid grid-cols-2 gap-1.5 shadow-2xs">
-            <Link
-              href="/pedido"
-              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-extrabold bg-brand-ink text-white shadow-xs transition-all"
-            >
-              <ShoppingBag className="w-4 h-4 text-brand-magenta shrink-0" />
-              <span>Fazer Pedido</span>
-            </Link>
-            <Link
-              href="/orcamento"
-              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-brand-muted hover:text-brand-ink hover:bg-gray-50 transition-all"
-            >
-              <Calculator className="w-4 h-4 text-brand-cyan shrink-0" />
-              <span>Fazer Orçamento</span>
-            </Link>
-          </div>
-        </div>
-
         {/* Grid 2 Colunas: Coluna Material + Marca (Esquerda) | Formulário (Direita) */}
-        <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-5">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
             {/* COLUNA ESQUERDA: Marca + Pedidos Recentes + Resumo do Material */}
             <aside className="lg:col-span-4 lg:sticky lg:top-8 space-y-4">

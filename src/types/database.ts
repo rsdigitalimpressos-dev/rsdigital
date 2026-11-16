@@ -153,7 +153,11 @@ export interface Pedido {
   itens: PedidoItem[];
 }
 
-export type OrcamentoStatus = "enviado" | "aprovado" | "cancelado";
+export type OrcamentoStatus =
+  | "solicitado"
+  | "enviado"
+  | "aprovado"
+  | "cancelado";
 
 export interface OrcamentoItem {
   modulo_id: string;
