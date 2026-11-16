@@ -39,7 +39,7 @@ import {
 } from "@/types/database";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
-const DEMO_SESSION_COOKIE = "rs_digital_admin_session";
+const DEMO_SESSION_COOKIE = "rs_digital_admin_auth_v3";
 
 function gerarTokenDemoAssinado(): string {
   const email = (process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br").toLowerCase();
@@ -133,7 +133,7 @@ export async function loginAdminAction(email: string, password: string) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 8,
     });
     revalidatePath("/admin");
     return { ok: true };
@@ -196,7 +196,7 @@ export async function verificarAdminAutenticado(): Promise<{
   return {
     autenticado: false,
     email: null,
-    modoDemo: true,
+    modoDemo: false,
   };
 }
 
@@ -440,15 +440,6 @@ export async function validarSenhaOrcamentoAction(senha: string) {
   if (!senhaLimpa || senhaLimpa !== senhaEsperada) {
     return { ok: false, erro: "Senha incorreta. Informe a senha do administrador." };
   }
-
-  const cookieStore = await cookies();
-  cookieStore.set(DEMO_SESSION_COOKIE, gerarTokenDemoAssinado(), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
 
   return { ok: true };
 }

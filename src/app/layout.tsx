@@ -1,10 +1,31 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#161616",
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "RS Digital · Pedidos de Livros e Apostilas Escolares",
   description:
     "Sistema online de pedidos de livros e apostilas escolares impressos da gráfica RS Digital.",
+  applicationName: "RS Digital",
+  appleWebApp: {
+    capable: true,
+    title: "RS Digital",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -25,6 +46,7 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
         />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className="min-h-screen bg-brand-paper text-brand-ink font-sans antialiased">
         {children}
@@ -32,4 +54,3 @@ export default function RootLayout({
     </html>
   );
 }
-

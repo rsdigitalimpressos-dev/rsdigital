@@ -1,7 +1,16 @@
 <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
   <rect width="120" height="120" rx="24" fill="#FFFFFF"/>
-  <circle cx="48" cy="48" r="26" fill="#00A0DC" style="mix-blend-mode:multiply"/>
-  <circle cx="72" cy="48" r="26" fill="#E5007D" style="mix-blend-mode:multiply"/>
-  <circle cx="60" cy="70" r="26" fill="#FFD200" style="mix-blend-mode:multiply"/>
+  <defs>
+    <clipPath id="cCyan"><circle cx="48" cy="48" r="26"/></clipPath>
+    <clipPath id="cMag"><circle cx="72" cy="48" r="26"/></clipPath>
+  </defs>
+  <circle cx="48" cy="48" r="26" fill="#00A0DC"/>
+  <circle cx="72" cy="48" r="26" fill="#E5007D"/>
+  <circle cx="60" cy="70" r="26" fill="#FFD200"/>
+  <circle cx="72" cy="48" r="26" fill="#2E3192" clip-path="url(#cCyan)"/>
+  <circle cx="60" cy="70" r="26" fill="#00A651" clip-path="url(#cCyan)"/>
+  <circle cx="60" cy="70" r="26" fill="#ED1C24" clip-path="url(#cMag)"/>
+  <g clip-path="url(#cCyan)">
+    <circle cx="60" cy="70" r="26" fill="#161616" clip-path="url(#cMag)"/>
+  </g>
 </svg>
-

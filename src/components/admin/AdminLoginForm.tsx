@@ -20,12 +20,10 @@ interface AdminLoginFormProps {
   modoDemo: boolean;
 }
 
-export function AdminLoginForm({ modoDemo }: AdminLoginFormProps) {
+export function AdminLoginForm({}: AdminLoginFormProps) {
   const router = useRouter();
-  const [email, setEmail] = useState(
-    modoDemo ? "admin@rsdigital.com.br" : ""
-  );
-  const [password, setPassword] = useState(modoDemo ? "rsdigital123" : "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
