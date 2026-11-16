@@ -510,58 +510,175 @@ export function OrcamentoClient({
     obterResumoModulo,
   ]);
 
-  const textoOrcamentoCompleto = useMemo(() => {
-    const saudacao = clienteNome.trim()
-      ? `Olá, *${clienteNome.trim()}*! 😊`
-      : `Olá! 😊`;
+  const textoWhatsAppOrcamento = useMemo(() => {
+    const nomeLimpo = clienteNome.trim();
+    const saudacao = nomeLimpo
+      ? `Olá, *${nomeLimpo}*! Tudo bem? 😊`
+      : `Olá! Tudo bem? 😊`;
+
+    const listaItens = modulosEscolhidosObjs
+      .map((m) => {
+        const r = obterResumoModulo(m);
+        return `• *${r.nomeComLivros}* — ${formatCurrency(r.valorEfetivo)}`;
+      })
+      .join("\n");
+
+    const blocoValores: string[] = [];
+    if (totais.desconto > 0) {
+      blocoValores.push(`Subtotal: ${formatCurrency(totais.subtotal)}`);
+      blocoValores.push(
+        `Desconto${cupomAplicado ? ` (${cupomAplicado.codigo})` : ""}: -${formatCurrency(totais.desconto)}`
+      );
+    }
+    if (totais.juros > 0) {
+      blocoValores.push(
+        `Juros parcelamento (${parcelas}x): +${formatCurrency(totais.juros)}`
+      );
+    }
+    blocoValores.push(`💰 *Valor Total:* *${formatCurrency(totais.total)}*`);
+    blocoValores.push(`💳 *Forma de pagamento:* ${pagamentoFormatadoTexto}`);
+
+    const urlBase =
+      typeof window !== "undefined" ? window.location.origin : "";
+    const linkPedido = urlBase ? `${urlBase}/pedido` : "";
+    const diasValidade = Math.max(1, Number(validadeDias) || 7);
+
+    const secoes: string[] = [
+      saudacao,
+      `Conforme solicitado, preparamos o seu orçamento de material escolar na *${config.nome_loja}*:`,
+      [
+        `📋 *Orçamento:* ${codigoOrcamento}`,
+        `🏫 *Colégio:* ${colegioSelecionadoObj?.nome || "—"}`,
+        `🎓 *Série:* ${serieSelecionadaObj?.nome || "—"}`,
+      ].join("\n"),
+      [
+        `📚 *Módulos selecionados (${modulosEscolhidosObjs.length}):*`,
+        listaItens || "• (Nenhum módulo selecionado)",
+      ].join("\n"),
+      blocoValores.join("\n"),
+    ];
+
+    if (observacao.trim()) {
+      secoes.push(`📝 *Observação:* ${observacao.trim()}`);
+    }
+
+    secoes.push(
+      [
+        `⏱️ *Prazo de produção:* ${config.prazo_dias} dias após a confirmação`,
+        `📅 *Validade do orçamento:* ${diasValidade} dias`,
+        `📍 *Retirada na loja:* ${config.endereco_retirada}`,
+        `🕒 *Horário:* ${config.horario_retirada}`,
+      ].join("\n")
+    );
+
+    if (linkPedido) {
+      secoes.push(
+        `Ficou com alguma dúvida ou deseja confirmar o seu pedido? Pode nos responder por aqui mesmo ou finalizar direto pelo nosso link:\n👉 ${linkPedido}`
+      );
+    } else {
+      secoes.push(
+        `Ficou com alguma dúvida ou deseja confirmar o seu pedido? É só nos responder por aqui mesmo!`
+      );
+    }
+
+    secoes.push(`Agradecemos a preferência! 💙💗💛\n*Equipe ${config.nome_loja}*`);
+
+    return secoes.join("\n\n");
+  }, [
+    clienteNome,
+    codigoOrcamento,
+    config,
+    colegioSelecionadoObj,
+    serieSelecionadaObj,
+    modulosEscolhidosObjs,
+    obterResumoModulo,
+    totais,
+    cupomAplicado,
+    parcelas,
+    pagamentoFormatadoTexto,
+    observacao,
+    validadeDias,
+  ]);
+
+  const textoEmailOrcamento = useMemo(() => {
+    const nomeLimpo = clienteNome.trim();
+    const saudacao = nomeLimpo
+      ? `Olá, ${nomeLimpo}! Tudo bem?`
+      : `Olá! Tudo bem?`;
 
     const listaItens = modulosEscolhidosObjs
       .map((m, i) => {
         const r = obterResumoModulo(m);
-        return `  ${i + 1}. ${r.nomeComLivros} — *${formatCurrency(r.valorEfetivo)}*`;
+        return `  ${i + 1}. ${r.nomeComLivros} — ${formatCurrency(r.valorEfetivo)}`;
       })
       .join("\n");
 
     const linhasValores: string[] = [];
     if (totais.desconto > 0) {
+      linhasValores.push(`Subtotal: ${formatCurrency(totais.subtotal)}`);
       linhasValores.push(
-        `• Subtotal: ${formatCurrency(totais.subtotal)}\n• Desconto${cupomAplicado ? ` (${cupomAplicado.codigo})` : ""}: -${formatCurrency(totais.desconto)}`
+        `Desconto${cupomAplicado ? ` (${cupomAplicado.codigo})` : ""}: -${formatCurrency(totais.desconto)}`
       );
     }
     if (totais.juros > 0) {
       linhasValores.push(
-        `• Juros parcelamento (${parcelas}x): +${formatCurrency(totais.juros)}`
+        `Juros parcelamento (${parcelas}x): +${formatCurrency(totais.juros)}`
       );
     }
-    linhasValores.push(`💰 *Valor Total: ${formatCurrency(totais.total)}*`);
-    linhasValores.push(`💳 *Forma de pagamento:* ${pagamentoFormatadoTexto}`);
+    linhasValores.push(`VALOR TOTAL: ${formatCurrency(totais.total)}`);
+    linhasValores.push(`Forma de pagamento: ${pagamentoFormatadoTexto}`);
 
     const urlBase =
       typeof window !== "undefined" ? window.location.origin : "";
     const linkPedido = urlBase ? `${urlBase}/pedido` : "";
+    const diasValidade = Math.max(1, Number(validadeDias) || 7);
 
-    return [
-      `${saudacao}`,
-      `Segue o seu *Orçamento de Material Escolar (${codigoOrcamento})* na *${config.nome_loja}*:`,
-      ``,
-      `🏫 *Colégio:* ${colegioSelecionadoObj?.nome || "—"}`,
-      `📚 *Série:* ${serieSelecionadaObj?.nome || "—"}`,
-      ``,
-      `📦 *Módulos selecionados (${modulosEscolhidosObjs.length}):*`,
-      listaItens || "  (Nenhum módulo selecionado)",
-      ``,
-      ...linhasValores,
-      observacao.trim() ? `\n📝 *Observação:* ${observacao.trim()}` : "",
-      ``,
-      `⏱️ *Prazo de produção:* ${config.prazo_dias} dias após confirmação`,
-      `📅 *Validade deste orçamento:* ${Math.max(1, Number(validadeDias) || 7)} dias`,
-      `📍 *Local de retirada:* ${config.endereco_retirada} (${config.horario_retirada})`,
-      linkPedido
-        ? `\n✅ Para confirmar seu pedido agora, acesse:\n${linkPedido}`
-        : "",
-    ]
-      .filter((line) => line !== "")
-      .join("\n");
+    const secoes: string[] = [
+      saudacao,
+      `Agradecemos o seu contato com a ${config.nome_loja}. Conforme solicitado, segue abaixo a proposta detalhada para o seu material escolar:`,
+      [
+        `--------------------------------------------------`,
+        `RESUMO DO ORÇAMENTO — Nº ${codigoOrcamento}`,
+        `--------------------------------------------------`,
+        `• Colégio: ${colegioSelecionadoObj?.nome || "—"}`,
+        `• Série: ${serieSelecionadaObj?.nome || "—"}`,
+      ].join("\n"),
+      [
+        `MÓDULOS SELECIONADOS (${modulosEscolhidosObjs.length}):`,
+        listaItens || "  (Nenhum módulo selecionado)",
+      ].join("\n"),
+      [
+        `--------------------------------------------------`,
+        ...linhasValores,
+        `--------------------------------------------------`,
+      ].join("\n"),
+    ];
+
+    if (observacao.trim()) {
+      secoes.push(`OBSERVAÇÕES:\n${observacao.trim()}`);
+    }
+
+    secoes.push(
+      [
+        `INFORMAÇÕES IMPORTANTES:`,
+        `• Prazo de produção: ${config.prazo_dias} dias após a confirmação do pedido`,
+        `• Validade desta proposta: ${diasValidade} dias`,
+        `• Local de retirada: ${config.endereco_retirada}`,
+        `• Horário de atendimento: ${config.horario_retirada}`,
+      ].join("\n")
+    );
+
+    if (linkPedido) {
+      secoes.push(
+        `COMO CONFIRMAR O SEU PEDIDO:\nVocê pode aprovar este orçamento respondendo a este e-mail, pelo nosso WhatsApp ${maskWhatsApp(config.whatsapp_loja)} ou realizando o pedido diretamente pelo link:\n${linkPedido}`
+      );
+    }
+
+    secoes.push(
+      `Atenciosamente,\nEquipe ${config.nome_loja}\nWhatsApp: ${maskWhatsApp(config.whatsapp_loja)}`
+    );
+
+    return secoes.join("\n\n");
   }, [
     clienteNome,
     codigoOrcamento,
@@ -659,10 +776,10 @@ export function OrcamentoClient({
     await registrarOrcamentoNoPainel();
     const foneCliente = onlyDigits(whatsappCliente);
     if (foneCliente.length >= 10) {
-      const url = gerarLinkWhatsApp(foneCliente, textoOrcamentoCompleto);
+      const url = gerarLinkWhatsApp(foneCliente, textoWhatsAppOrcamento);
       window.open(url, "_blank", "noopener,noreferrer");
     } else {
-      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(textoOrcamentoCompleto)}`;
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(textoWhatsAppOrcamento)}`;
       window.open(url, "_blank", "noopener,noreferrer");
     }
   };
@@ -670,10 +787,12 @@ export function OrcamentoClient({
   const handleEnviarEmail = async () => {
     if (!validarSelecaoMinima()) return;
     await registrarOrcamentoNoPainel();
-    const assunto = `Orçamento de Material Escolar ${codigoOrcamento} — ${config.nome_loja}`;
-    const corpo = textoOrcamentoCompleto.replace(/\*/g, "");
+    const colNome = colegioSelecionadoObj?.nome
+      ? ` — ${colegioSelecionadoObj.nome}`
+      : "";
+    const assunto = `Orçamento de Material Escolar (${codigoOrcamento})${colNome} | ${config.nome_loja}`;
     const destinatario = emailCliente.trim();
-    const mailtoUrl = `mailto:${encodeURIComponent(destinatario)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    const mailtoUrl = `mailto:${encodeURIComponent(destinatario)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(textoEmailOrcamento)}`;
     window.location.href = mailtoUrl;
   };
 
@@ -681,7 +800,7 @@ export function OrcamentoClient({
     if (!validarSelecaoMinima()) return;
     await registrarOrcamentoNoPainel();
     try {
-      await navigator.clipboard.writeText(textoOrcamentoCompleto);
+      await navigator.clipboard.writeText(textoWhatsAppOrcamento);
       setResumoCopiado(true);
       setTimeout(() => setResumoCopiado(false), 2500);
     } catch {

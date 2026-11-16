@@ -8593,7 +8593,33 @@ export function AdminDashboard({
                                     <a
                                       href={gerarLinkWhatsApp(
                                         orc.whatsapp,
-                                        `Olá, ${orc.cliente_nome}! Segue o seu orçamento *${orc.codigo}* (${orc.colegio_nome} - ${orc.serie_nome}) no valor total de *${formatCurrency(orc.total)}* (${pagamentoLabel}). Podemos confirmar o seu pedido?`
+                                        [
+                                          `Olá, *${orc.cliente_nome}*! Tudo bem? 😊`,
+                                          `Segue o seu orçamento de material escolar na *${config.nome_loja}*:`,
+                                          [
+                                            `📋 *Orçamento:* ${orc.codigo}`,
+                                            `🏫 *Colégio:* ${orc.colegio_nome}`,
+                                            `🎓 *Série:* ${orc.serie_nome}`,
+                                          ].join("\n"),
+                                          [
+                                            `📚 *Módulos selecionados (${orc.itens.length}):*`,
+                                            ...orc.itens.map(
+                                              (it) =>
+                                                `• *${it.nome_modulo}* — ${formatCurrency(it.valor)}`
+                                            ),
+                                          ].join("\n"),
+                                          [
+                                            `💰 *Valor Total:* *${formatCurrency(orc.total)}*`,
+                                            `💳 *Forma de pagamento:* ${pagamentoLabel}`,
+                                          ].join("\n"),
+                                          [
+                                            `⏱️ *Prazo de produção:* ${config.prazo_dias} dias após a confirmação`,
+                                            `📅 *Validade do orçamento:* ${orc.validade_dias} dias`,
+                                            `📍 *Retirada na loja:* ${config.endereco_retirada}`,
+                                            `🕒 *Horário:* ${config.horario_retirada}`,
+                                          ].join("\n"),
+                                          `Ficou com alguma dúvida ou podemos confirmar o seu pedido? 😊\n*Equipe ${config.nome_loja}*`,
+                                        ].join("\n\n")
                                       )}
                                       target="_blank"
                                       rel="noopener noreferrer"
