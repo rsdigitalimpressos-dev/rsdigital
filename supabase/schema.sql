@@ -334,6 +334,10 @@ $$;
 GRANT EXECUTE ON FUNCTION public.validar_cupom(TEXT) TO anon, authenticated;
 
 -- 4.2. Criar pedido recalculando subtotal, desconto, juros e previsão no servidor
+DROP FUNCTION IF EXISTS public.criar_pedido_seguro(
+  TEXT, TEXT, TEXT, UUID, UUID, UUID[], TEXT, INTEGER, TEXT, TEXT
+);
+
 CREATE OR REPLACE FUNCTION public.criar_pedido_seguro(
   p_responsavel_nome TEXT,
   p_aluno_nome TEXT,
@@ -344,7 +348,8 @@ CREATE OR REPLACE FUNCTION public.criar_pedido_seguro(
   p_forma_pagamento TEXT,
   p_parcelas INTEGER DEFAULT NULL,
   p_cupom_codigo TEXT DEFAULT NULL,
-  p_observacao TEXT DEFAULT NULL
+  p_observacao TEXT DEFAULT NULL,
+  p_livros_por_modulo JSONB DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -354,6 +359,7 @@ AS $$
 DECLARE
   v_config public.config%ROWTYPE;
   v_cupom public.cupons%ROWTYPE;
+  v_mod public.modulos%ROWTYPE;
   v_colegio_nome TEXT;
   v_serie_nome TEXT;
   v_hoje_br DATE := (now() AT TIME ZONE 'America/Sao_Paulo')::DATE;
@@ -367,8 +373,16 @@ DECLARE
   v_pedido public.pedidos%ROWTYPE;
   v_cupom_id UUID := NULL;
   v_cupom_codigo TEXT := NULL;
-  v_count_modulos INTEGER;
+  v_count_modulos INTEGER := 0;
   v_itens JSONB := '[]'::jsonb;
+  v_itens_temp JSONB := '[]'::jsonb;
+  v_escolhidos_json JSONB;
+  v_soma_todos NUMERIC(10, 2) := 0.00;
+  v_soma_escolhidos NUMERIC(10, 2) := 0.00;
+  v_qtd_escolhidos INTEGER := 0;
+  v_nomes_excluidos TEXT;
+  v_valor_efetivo NUMERIC(10, 2) := 0.00;
+  v_nome_formatado TEXT;
 BEGIN
   IF array_length(p_modulo_ids, 1) IS NULL OR array_length(p_modulo_ids, 1) < 1 THEN
     RAISE EXCEPTION 'Selecione pelo menos um módulo.';
@@ -394,13 +408,74 @@ BEGIN
   -- Busca configurações
   SELECT * INTO v_config FROM public.config WHERE id = 1;
 
-  -- Calcula subtotal diretamente dos módulos ativos daquela série
-  SELECT COALESCE(SUM(valor), 0), COUNT(*)
-  INTO v_subtotal, v_count_modulos
-  FROM public.modulos
-  WHERE id = ANY(p_modulo_ids)
-    AND serie_id = p_serie_id
-    AND ativo = true;
+  -- Calcula subtotal e itens respeitando seleção parcial de livros por módulo
+  FOR v_mod IN
+    SELECT *
+    FROM public.modulos
+    WHERE id = ANY(p_modulo_ids)
+      AND serie_id = p_serie_id
+      AND ativo = true
+    ORDER BY ordem ASC
+  LOOP
+    v_count_modulos := v_count_modulos + 1;
+    v_valor_efetivo := v_mod.valor;
+    v_nome_formatado := v_mod.nome;
+
+    IF jsonb_typeof(v_mod.livros) = 'array' AND jsonb_array_length(v_mod.livros) > 0 THEN
+      SELECT COALESCE(SUM(GREATEST(0.00, COALESCE((elem ->> 'valor')::NUMERIC, 0.00))), 0.00)
+      INTO v_soma_todos
+      FROM jsonb_array_elements(v_mod.livros) AS elem;
+
+      v_escolhidos_json := CASE
+        WHEN p_livros_por_modulo IS NOT NULL AND jsonb_typeof(p_livros_por_modulo) = 'object'
+        THEN p_livros_por_modulo -> (v_mod.id::TEXT)
+        ELSE NULL
+      END;
+
+      IF v_escolhidos_json IS NOT NULL
+         AND jsonb_typeof(v_escolhidos_json) = 'array'
+         AND jsonb_array_length(v_escolhidos_json) > 0 THEN
+        SELECT
+          COUNT(*),
+          COALESCE(SUM(GREATEST(0.00, COALESCE((elem ->> 'valor')::NUMERIC, 0.00))), 0.00)
+        INTO v_qtd_escolhidos, v_soma_escolhidos
+        FROM jsonb_array_elements(v_mod.livros) AS elem
+        WHERE (elem ->> 'id') IN (SELECT jsonb_array_elements_text(v_escolhidos_json))
+           OR (elem ->> 'nome') IN (SELECT jsonb_array_elements_text(v_escolhidos_json));
+
+        IF v_qtd_escolhidos < 1 THEN
+          RAISE EXCEPTION 'Selecione pelo menos 1 livro válido para o módulo %.', v_mod.nome;
+        END IF;
+
+        SELECT STRING_AGG(t.elem ->> 'nome', ', ' ORDER BY t.ord)
+        INTO v_nomes_excluidos
+        FROM jsonb_array_elements(v_mod.livros) WITH ORDINALITY AS t(elem, ord)
+        WHERE NOT (
+          (t.elem ->> 'id') IN (SELECT jsonb_array_elements_text(v_escolhidos_json))
+          OR (t.elem ->> 'nome') IN (SELECT jsonb_array_elements_text(v_escolhidos_json))
+        );
+
+        IF v_nomes_excluidos IS NULL OR TRIM(v_nomes_excluidos) = '' THEN
+          v_valor_efetivo := ROUND(CASE WHEN v_soma_todos > 0 THEN v_soma_todos ELSE v_mod.valor END, 2);
+          v_nome_formatado := v_mod.nome;
+        ELSE
+          v_valor_efetivo := ROUND(v_soma_escolhidos, 2);
+          v_nome_formatado := v_mod.nome || ' — Todos os livros, exceto ' || v_nomes_excluidos;
+        END IF;
+      ELSE
+        v_valor_efetivo := ROUND(CASE WHEN v_soma_todos > 0 THEN v_soma_todos ELSE v_mod.valor END, 2);
+      END IF;
+    END IF;
+
+    v_subtotal := ROUND(v_subtotal + v_valor_efetivo, 2);
+    v_itens_temp := v_itens_temp || jsonb_build_array(
+      jsonb_build_object(
+        'modulo_id', v_mod.id,
+        'nome_modulo', v_nome_formatado,
+        'valor', v_valor_efetivo
+      )
+    );
+  END LOOP;
 
   IF v_count_modulos <> array_length(p_modulo_ids, 1) THEN
     RAISE EXCEPTION 'Um ou mais módulos selecionados são inválidos para esta série.';
@@ -485,12 +560,15 @@ BEGIN
   )
   RETURNING * INTO v_pedido;
 
-  -- Grava itens do pedido copiando nome e valor vigentes
+  -- Grava itens do pedido com nome_modulo e valor recalculados
   INSERT INTO public.pedido_itens (pedido_id, modulo_id, nome_modulo, valor, impresso)
-  SELECT v_pedido.id, m.id, m.nome, m.valor, false
-  FROM public.modulos m
-  WHERE m.id = ANY(p_modulo_ids)
-  ORDER BY m.ordem ASC;
+  SELECT
+    v_pedido.id,
+    (it ->> 'modulo_id')::UUID,
+    it ->> 'nome_modulo',
+    ROUND((it ->> 'valor')::NUMERIC, 2),
+    false
+  FROM jsonb_array_elements(v_itens_temp) AS it;
 
   SELECT COALESCE(
     jsonb_agg(
@@ -528,7 +606,7 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.criar_pedido_seguro(
-  TEXT, TEXT, TEXT, UUID, UUID, UUID[], TEXT, INTEGER, TEXT, TEXT
+  TEXT, TEXT, TEXT, UUID, UUID, UUID[], TEXT, INTEGER, TEXT, TEXT, JSONB
 ) TO anon, authenticated;
 
 -- 4.3. Consulta pública segura de pedido (permite buscar apenas pelo WhatsApp ou Nº + WhatsApp; sem link_arquivo)

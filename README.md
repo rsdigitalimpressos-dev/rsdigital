@@ -49,8 +49,8 @@ Acesse:
 
 1. Acesse [supabase.com](https://supabase.com/) e crie um novo projeto gratuito.
 2. No menu lateral do Supabase, abra **SQL Editor** → **New Query**.
-3. Copie todo o conteúdo do arquivo [`supabase/schema.sql`](./supabase/schema.sql), cole no editor e clique em **Run** (isso criará todas as tabelas, índices, a view pública `modulos_publicos`, políticas de RLS e funções RPC seguras).
-4. Em seguida, abra uma nova query no **SQL Editor**, copie o conteúdo de [`supabase/seed.sql`](./supabase/seed.sql) e clique em **Run** para popular os 2 colégios de exemplo, 3 séries cada, 4 módulos por série a R$ 300,00, o cupom `BEMVINDO10` e as taxas de parcelamento.
+3. Copie todo o conteúdo do arquivo [`supabase/schema.sql`](./supabase/schema.sql), cole no editor e clique em **Run** (isso criará todas as tabelas, índices, a view pública `modulos_publicos`, políticas de RLS, configurações iniciais da loja e funções RPC seguras, incluindo suporte a seleção parcial de livros por módulo).
+4. *(Opcional — somente para zerar uma base que tenha dados de teste)*: o arquivo [`supabase/seed.sql`](./supabase/seed.sql) executa `TRUNCATE TABLE ... RESTART IDENTITY CASCADE` para limpar todos os pedidos, cadastros e lançamentos, reiniciando a numeração em `#0001`. **Não execute `seed.sql` se você já tiver dados reais cadastrados.**
 
 ---
 
@@ -59,6 +59,8 @@ Acesse:
 1. No painel do Supabase, acesse **Authentication** → **Users**.
 2. Clique em **Add user** → **Create new user**.
 3. Informe o **E-mail** e a **Senha** da administradora, marque a opção **Auto Confirm User** e clique em **Create user**.
+
+> Em produção com Supabase configurado, o login do painel `/admin` aceita exclusivamente usuários autenticados no Supabase Auth (o modo demonstração local é desativado automaticamente).
 
 ---
 
@@ -80,10 +82,10 @@ SUPABASE_SERVICE_ROLE_KEY=SUA_CHAVE_SERVICE_ROLE_SECRET
 
 ---
 
-## 5. Como publicar na Vercel (Plano Gratuito)
+## 5. Como publicar online na Vercel (Plano Gratuito)
 
-1. Suba este repositório para o seu GitHub / GitLab / Bitbucket.
+1. Suba este repositório atualizado para o seu GitHub / GitLab / Bitbucket (ou use a Vercel CLI / plugin integrado).
 2. Acesse [vercel.com](https://vercel.com/), clique em **Add New...** → **Project** e importe o repositório.
-3. Na seção **Environment Variables**, adicione as três variáveis (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`).
-4. Clique em **Deploy**. O sistema estará no ar pronto para uso!
+3. Em **Settings → Environment Variables**, adicione as três variáveis de produção do Supabase (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`).
+4. Clique em **Deploy**. O sistema estará no ar com `/pedido` (clientes) e `/admin` (equipe interna)!
 

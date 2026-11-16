@@ -2997,11 +2997,14 @@ export function AdminDashboard({
                                     {ressalvasLista.length > 0 && (
                                       <span
                                         title={ressalvasLista.join(" | ")}
-                                        className="inline-flex items-center gap-1 text-[11px] text-amber-700 font-medium cursor-help"
+                                        className="inline-flex items-center gap-1 text-[11px] text-amber-700 font-medium max-w-[200px]"
                                       >
                                         <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                                        <span className="sr-only">
-                                          Observação
+                                        <span className="truncate">
+                                          {ressalvasLista[0]}
+                                          {ressalvasLista.length > 1
+                                            ? ` (+${ressalvasLista.length - 1})`
+                                            : ""}
                                         </span>
                                       </span>
                                     )}

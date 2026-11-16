@@ -8,6 +8,7 @@ import {
 import { readLocalDb, writeLocalDb } from "./local-store";
 import {
   createDefaultLivros,
+  createInitialSeedState,
   getCapaPadraoPorOrdem,
   getDisciplinasPadraoPorSerie,
   getLivrosPadraoPorModulo,
@@ -36,6 +37,8 @@ import {
   onlyDigits,
   toLocalDateISO,
 } from "./format";
+
+const DEFAULT_LOJA_CONFIG: LojaConfig = createInitialSeedState().config;
 
 export async function createServerSupabase() {
   const cookieStore = await cookies();
@@ -91,7 +94,7 @@ export async function getCatalogoPublico(): Promise<{
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createServerSupabase();
-      const [colRes, serRes, modRes, cfgRes] = await Promise.all([
+      const [colRes, serRes, modRes, livRes, cfgRes] = await Promise.all([
         supabase
           .from("colegios")
           .select("id, nome, ativo, criado_em")
@@ -107,29 +110,58 @@ export async function getCatalogoPublico(): Promise<{
           .select("id, serie_id, nome, ordem, valor, ativo, disciplinas, livros, capa_url")
           .eq("ativo", true)
           .order("ordem", { ascending: true }),
-        supabase.from("config").select("*").eq("id", 1).single(),
+        supabase
+          .from("livros")
+          .select("id, nome, categoria, valor, ativo, serie_nome, capa_url, capas_por_serie")
+          .eq("ativo", true),
+        supabase.from("config").select("*").eq("id", 1).maybeSingle(),
       ]);
 
-      if (!colRes.error && !serRes.error && !modRes.error && cfgRes.data) {
+      if (!colRes.error && !serRes.error && !modRes.error && !cfgRes.error) {
         const serieNomeMap = new Map(
           (serRes.data || []).map((s) => [s.id, s.nome])
         );
+        const livrosCat = ((livRes.data || []) as Livro[]).map((l) => ({
+          ...l,
+          valor: Number(l.valor),
+        }));
+
         return {
           colegios: colRes.data || [],
           series: serRes.data || [],
           modulos: (modRes.data || []).map((m) => {
             const mRec = m as Record<string, unknown>;
             const sNome = serieNomeMap.get(m.serie_id);
-            const livrosMod = Array.isArray(mRec.livros)
-              ? (mRec.livros as ModuloLivroItem[])
-              : getLivrosPadraoPorModulo(m.nome, sNome);
-            const discs = Array.isArray(mRec.disciplinas)
-              ? (mRec.disciplinas as string[])
-              : livrosMod.map((l) => l.nome);
+            const livrosRaw =
+              Array.isArray(mRec.livros) && mRec.livros.length > 0
+                ? (mRec.livros as ModuloLivroItem[])
+                : getLivrosPadraoPorModulo(m.nome, sNome, livrosCat);
+
+            const livrosGarantidos = livrosRaw.map((item) => {
+              const catLivro = livrosCat.find(
+                (l) =>
+                  l.id === item.id ||
+                  l.nome.toLowerCase() === item.nome.toLowerCase()
+              );
+              return {
+                ...item,
+                valor: Number(item.valor),
+                serie_nome:
+                  item.serie_nome || sNome || catLivro?.serie_nome || null,
+                capa_url:
+                  item.capa_url || resolverCapaLivroParaSerie(catLivro, sNome),
+              };
+            });
+
+            const discs =
+              Array.isArray(mRec.disciplinas) && mRec.disciplinas.length > 0
+                ? (mRec.disciplinas as string[])
+                : livrosGarantidos.map((l) => l.nome);
             const capa =
               typeof mRec.capa_url === "string" && mRec.capa_url.trim() !== ""
                 ? mRec.capa_url
                 : getCapaPadraoPorOrdem(Number(m.ordem) || 1);
+
             return {
               ...m,
               valor: Number(m.valor),
@@ -137,16 +169,30 @@ export async function getCatalogoPublico(): Promise<{
                 discs.length > 0
                   ? discs
                   : getDisciplinasPadraoPorSerie(sNome),
-              livros: livrosMod,
+              livros: livrosGarantidos,
               capa_url: capa,
             };
           }),
-          config: cfgRes.data as LojaConfig,
+          config: (cfgRes.data as LojaConfig | null) || DEFAULT_LOJA_CONFIG,
         };
       }
+
+      console.error("Erro ao consultar catálogo público no Supabase:", {
+        colegios: colRes.error?.message,
+        series: serRes.error?.message,
+        modulos: modRes.error?.message,
+        config: cfgRes.error?.message,
+      });
     } catch (err) {
-      console.warn("Usando fallback local para catálogo público:", err);
+      console.error("Falha ao carregar catálogo público no Supabase:", err);
     }
+
+    return {
+      colegios: [],
+      series: [],
+      modulos: [],
+      config: DEFAULT_LOJA_CONFIG,
+    };
   }
 
   const db = readLocalDb();
@@ -250,9 +296,16 @@ export async function validarCupomServer(codigoInput: string): Promise<{
           },
         };
       }
+      if (error) {
+        console.error("Erro ao validar cupom no Supabase:", error.message);
+      }
     } catch (err) {
-      console.warn("Fallback local ao validar cupom:", err);
+      console.error("Falha ao validar cupom no Supabase:", err);
     }
+    return {
+      valido: false,
+      erro: "Não foi possível validar o cupom no momento. Tente novamente.",
+    };
   }
 
   const db = readLocalDb();
@@ -328,7 +381,10 @@ export async function criarPedidoServer(input: {
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createServerSupabase();
-      const { data, error } = await supabase.rpc("criar_pedido_seguro", {
+      const livrosPorModulo =
+        input.livros_por_modulo || input.disciplinas_por_modulo || null;
+
+      const paramsBase = {
         p_responsavel_nome: responsavel,
         p_aluno_nome: aluno,
         p_whatsapp: whatsappLimpo,
@@ -340,17 +396,36 @@ export async function criarPedidoServer(input: {
           input.forma_pagamento === "credito_parcelado" ? input.parcelas : null,
         p_cupom_codigo: input.cupom_codigo || null,
         p_observacao: input.observacao || null,
+      };
+
+      let { data, error } = await supabase.rpc("criar_pedido_seguro", {
+        ...paramsBase,
+        p_livros_por_modulo: livrosPorModulo,
       });
 
-      if (error) {
-        return { ok: false, erro: error.message || "Erro ao registrar pedido." };
+      // Compatibilidade caso o banco ainda possua a assinatura anterior (10 parâmetros)
+      if (
+        error &&
+        (error.code === "PGRST202" ||
+          /p_livros_por_modulo/i.test(error.message || ""))
+      ) {
+        const retryRes = await supabase.rpc("criar_pedido_seguro", paramsBase);
+        data = retryRes.data;
+        error = retryRes.error;
+      }
+
+      if (error || !data) {
+        return {
+          ok: false,
+          erro: error?.message || "Erro ao registrar pedido no servidor.",
+        };
       }
 
       const { data: cfgData } = await supabase
         .from("config")
         .select("*")
         .eq("id", 1)
-        .single();
+        .maybeSingle();
 
       let colegioNome: string = data.colegio_nome || "";
       let serieNome: string = data.serie_nome || "";
@@ -360,12 +435,12 @@ export async function criarPedidoServer(input: {
             .from("colegios")
             .select("nome")
             .eq("id", input.colegio_id)
-            .single(),
+            .maybeSingle(),
           supabase
             .from("series")
             .select("nome")
             .eq("id", input.serie_id)
-            .single(),
+            .maybeSingle(),
         ]);
         colegioNome = colegioNome || colRes.data?.nome || "";
         serieNome = serieNome || serRes.data?.nome || "";
@@ -430,10 +505,14 @@ export async function criarPedidoServer(input: {
       return {
         ok: true,
         pedido: pedidoCriado,
-        config: cfgData as LojaConfig,
+        config: (cfgData as LojaConfig | null) || DEFAULT_LOJA_CONFIG,
       };
     } catch (err) {
-      console.warn("Fallback local ao criar pedido:", err);
+      console.error("Erro ao criar pedido no Supabase:", err);
+      return {
+        ok: false,
+        erro: "Não foi possível registrar seu pedido no momento. Tente novamente em instantes.",
+      };
     }
   }
 
@@ -665,7 +744,7 @@ export async function getAdminData(): Promise<{
           .from("cupons")
           .select("*")
           .order("codigo", { ascending: true }),
-        supabase.from("config").select("*").eq("id", 1).single(),
+        supabase.from("config").select("*").eq("id", 1).maybeSingle(),
         supabase
           .from("lancamentos_financeiros")
           .select("*")
@@ -676,16 +755,23 @@ export async function getAdminData(): Promise<{
           .order("nome", { ascending: true }),
       ]);
 
-      if (!pedRes.error && cfgRes.data) {
+      if (!pedRes.error && !cfgRes.error) {
         const colegios = (colRes.data || []) as Colegio[];
         const series = (serRes.data || []) as Serie[];
         const serMap = new Map(series.map((s) => [s.id, s.nome]));
+        const livrosSupabase: Livro[] =
+          !livRes.error && Array.isArray(livRes.data)
+            ? (livRes.data as Livro[]).map((l) => ({
+                ...l,
+                valor: Number(l.valor),
+              }))
+            : [];
         const modulos = ((modRes.data || []) as Modulo[]).map((m) => {
           const sNome = serMap.get(m.serie_id);
           const livrosMod =
             Array.isArray(m.livros) && m.livros.length > 0
               ? m.livros
-              : getLivrosPadraoPorModulo(m.nome, sNome);
+              : getLivrosPadraoPorModulo(m.nome, sNome, livrosSupabase);
           return {
             ...m,
             valor: Number(m.valor),
@@ -732,14 +818,6 @@ export async function getAdminData(): Promise<{
             })),
         }));
 
-        const livrosSupabase: Livro[] =
-          !livRes.error && Array.isArray(livRes.data)
-            ? (livRes.data as Livro[]).map((l) => ({
-                ...l,
-                valor: Number(l.valor),
-              }))
-            : [];
-
         return {
           pedidos,
           colegios,
@@ -747,14 +825,31 @@ export async function getAdminData(): Promise<{
           modulos,
           livros: livrosSupabase,
           cupons,
-          config: cfgRes.data as LojaConfig,
+          config: (cfgRes.data as LojaConfig | null) || DEFAULT_LOJA_CONFIG,
           lancamentos,
           modoSupabase: true,
         };
       }
+
+      console.error("Erro ao consultar painel admin no Supabase:", {
+        pedidos: pedRes.error?.message,
+        config: cfgRes.error?.message,
+      });
     } catch (err) {
-      console.warn("Fallback local no painel admin:", err);
+      console.error("Falha ao carregar dados do admin no Supabase:", err);
     }
+
+    return {
+      pedidos: [],
+      colegios: [],
+      series: [],
+      modulos: [],
+      livros: [],
+      cupons: [],
+      config: DEFAULT_LOJA_CONFIG,
+      lancamentos: [],
+      modoSupabase: true,
+    };
   }
 
   const db = readLocalDb();
@@ -1292,10 +1387,29 @@ export async function salvarModuloServer(dados: {
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createAdminSupabase();
-      const livrosParaSalvar =
-        livrosLimpos && livrosLimpos.length > 0
-          ? livrosLimpos
-          : getLivrosPadraoPorModulo(nomeLimpo);
+      let livrosParaSalvar =
+        livrosLimpos && livrosLimpos.length > 0 ? livrosLimpos : undefined;
+
+      if (!livrosParaSalvar) {
+        const [serieRes, livrosRes] = await Promise.all([
+          supabase
+            .from("series")
+            .select("nome")
+            .eq("id", dados.serie_id)
+            .maybeSingle(),
+          supabase.from("livros").select("*").eq("ativo", true),
+        ]);
+        const livrosCat = ((livrosRes.data || []) as Livro[]).map((l) => ({
+          ...l,
+          valor: Number(l.valor),
+        }));
+        livrosParaSalvar = getLivrosPadraoPorModulo(
+          nomeLimpo,
+          serieRes.data?.nome,
+          livrosCat
+        );
+      }
+
       const disciplinasParaSalvar =
         disciplinasLimpas && disciplinasLimpas.length > 0
           ? disciplinasLimpas
@@ -2145,9 +2259,17 @@ export async function consultarPedidoPublicoServer(
           pedidos: lista,
         };
       }
+      if (error) {
+        console.error("Erro ao consultar pedido público no Supabase:", error.message);
+      }
     } catch (e) {
-      console.warn("Fallback local ao consultar pedido:", e);
+      console.error("Falha ao consultar pedido público no Supabase:", e);
     }
+
+    return {
+      encontrado: false,
+      erro: "Não foi possível consultar seu pedido no momento. Tente novamente em instantes.",
+    };
   }
 
   const db = readLocalDb();

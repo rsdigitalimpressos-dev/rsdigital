@@ -107,15 +107,30 @@ export async function loginAdminAction(email: string, password: string) {
         revalidatePath("/admin");
         return { ok: true };
       }
+      return {
+        ok: false,
+        erro: "E-mail ou senha inválidos.",
+      };
     } catch {
-      // Continua para verificar credencial administrativa padrão
+      return {
+        ok: false,
+        erro: "Não foi possível autenticar no servidor. Tente novamente.",
+      };
     }
   }
 
-  // Modo demonstração / local (sem chaves Supabase configuradas ainda)
+  // Modo demonstração local (apenas quando Supabase não está configurado)
+  const demoPasswordEnv = process.env.ADMIN_DEMO_PASSWORD;
+  if (process.env.NODE_ENV === "production" && !demoPasswordEnv) {
+    return {
+      ok: false,
+      erro: "Configure as variáveis do Supabase na hospedagem para habilitar o acesso administrativo.",
+    };
+  }
+
   const expectedEmail =
     process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br";
-  const expectedPassword = process.env.ADMIN_DEMO_PASSWORD || "rsdigital123";
+  const expectedPassword = demoPasswordEnv || "rsdigital123";
 
   if (
     cleanEmail.toLowerCase() === expectedEmail.toLowerCase() &&
@@ -173,13 +188,22 @@ export async function verificarAdminAutenticado(): Promise<{
         };
       }
     } catch {
-      // Fallback para cookie assinado abaixo
+      // Sem sessão válida no Supabase Auth
     }
+
+    return {
+      autenticado: false,
+      email: null,
+      modoDemo: false,
+    };
   }
 
+  const demoPermitido =
+    process.env.NODE_ENV !== "production" ||
+    Boolean(process.env.ADMIN_DEMO_PASSWORD);
   const cookieStore = await cookies();
   const demoSession = cookieStore.get(DEMO_SESSION_COOKIE)?.value;
-  if (validarTokenDemo(demoSession)) {
+  if (demoPermitido && validarTokenDemo(demoSession)) {
     return {
       autenticado: true,
       email: process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br",
@@ -190,7 +214,7 @@ export async function verificarAdminAutenticado(): Promise<{
   return {
     autenticado: false,
     email: null,
-    modoDemo: true,
+    modoDemo: process.env.NODE_ENV !== "production",
   };
 }
 
