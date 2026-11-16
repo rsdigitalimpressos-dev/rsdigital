@@ -2002,7 +2002,7 @@ export function AdminDashboard({
                 >
                   <span className="flex items-center gap-2.5">
                     <ExternalLink className="w-4 h-4 text-brand-cyan shrink-0" />
-                    {!recolhidaEfetiva && <span>Página de Pedidos</span>}
+                    {!recolhidaEfetiva && <span>Pedidos</span>}
                   </span>
                   {!recolhidaEfetiva && (
                     <ChevronRight className="w-3.5 h-3.5 opacity-60" />
@@ -2023,7 +2023,7 @@ export function AdminDashboard({
                 >
                   <span className="flex items-center gap-2.5">
                     <FileText className="w-4 h-4 text-brand-yellow shrink-0" />
-                    {!recolhidaEfetiva && <span>Página de Orçamento</span>}
+                    {!recolhidaEfetiva && <span>Orçamento</span>}
                   </span>
                   {!recolhidaEfetiva && (
                     <ChevronRight className="w-3.5 h-3.5 opacity-60" />

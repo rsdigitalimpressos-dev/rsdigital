@@ -1471,18 +1471,18 @@ export function AdminOrcamentosSection({
                     >
                       {/* LINHA PRINCIPAL (5 colunas idênticas ao cabeçalho no Desktop) */}
                       <div className="px-4 sm:px-6 py-3.5 grid grid-cols-1 lg:grid-cols-[150px_minmax(220px,1fr)_170px_145px_140px] gap-3 lg:gap-6 items-center">
-                        {/* Coluna 1: Orçamento */}
+                        {/* Coluna 1: Orçamento (sem fundo e sem borda) */}
                         <div className="flex items-center justify-between lg:justify-start">
-                          <span className="inline-flex items-center h-7 px-2.5 rounded-lg bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/25 text-xs font-extrabold tabular-nums">
+                          <span className="text-xs font-semibold text-brand-muted tabular-nums">
                             {orc.codigo}
                           </span>
 
                           {/* Valor visível no topo apenas no celular */}
                           <div className="text-right tabular-nums lg:hidden">
-                            <strong className="text-sm font-extrabold text-brand-magenta block leading-tight">
+                            <strong className="text-[13px] font-bold text-brand-magenta block leading-tight">
                               {formatCurrency(orc.total)}
                             </strong>
-                            <span className="text-[11px] text-brand-muted font-semibold block">
+                            <span className="text-[11px] text-brand-muted font-medium block">
                               {pagamentoLabel}
                             </span>
                           </div>
@@ -1505,12 +1505,12 @@ export function AdminOrcamentosSection({
                           </div>
                         </div>
 
-                        {/* Coluna 3: Valor / Pagamento */}
+                        {/* Coluna 3: Valor / Pagamento (tamanho de texto reduzido) */}
                         <div className="hidden lg:block tabular-nums">
-                          <strong className="text-base font-extrabold text-brand-magenta block leading-tight">
+                          <strong className="text-[13px] font-bold text-brand-magenta block leading-tight">
                             {formatCurrency(orc.total)}
                           </strong>
-                          <span className="text-xs text-brand-muted font-semibold block mt-0.5">
+                          <span className="text-xs text-brand-muted font-medium block mt-0.5">
                             {pagamentoLabel}
                           </span>
                         </div>
