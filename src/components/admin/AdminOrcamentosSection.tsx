@@ -1436,13 +1436,13 @@ export function AdminOrcamentosSection({
 
           return (
             <div>
-              {/* Cabeçalho das Colunas (Desktop) alinhado exatamente com os controles */}
-              <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-6 py-2.5 bg-[#F8FAFC] border-b border-brand-border/70 text-[11px] font-bold uppercase tracking-wider text-brand-muted items-center">
-                <div className="col-span-2">Orçamento</div>
-                <div className="col-span-4">Cliente & Material</div>
-                <div className="col-span-2 text-right">Valor / Pagamento</div>
-                <div className="col-span-2 text-right pr-2">Status</div>
-                <div className="col-span-2 text-right">Ações</div>
+              {/* Cabeçalho das Colunas (Desktop) — cada coluna começa exatamente no mesmo eixo X do item abaixo */}
+              <div className="hidden lg:grid lg:grid-cols-[150px_minmax(220px,1fr)_170px_155px_155px] gap-6 px-6 py-2.5 bg-[#F8FAFC] border-b border-brand-border/70 text-[11px] font-bold uppercase tracking-wider text-brand-muted items-center">
+                <div>Orçamento</div>
+                <div>Cliente & Material</div>
+                <div>Valor / Pagamento</div>
+                <div>Status</div>
+                <div>Ações</div>
               </div>
 
               <div className="divide-y divide-brand-border/70">
@@ -1461,14 +1461,15 @@ export function AdminOrcamentosSection({
                       key={orc.id}
                       className="bg-white hover:bg-gray-50/50 transition-colors"
                     >
-                      {/* LINHA PRINCIPAL (Mobile empilhado inteligente / Desktop 12 colunas alinhadas) */}
-                      <div className="px-4 sm:px-6 py-3.5 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 items-center">
-                        {/* Topo Mobile: Código à esquerda + Valor à direita | Desktop Coluna 1 */}
-                        <div className="flex items-center justify-between lg:col-span-2">
+                      {/* LINHA PRINCIPAL (5 colunas idênticas ao cabeçalho no Desktop) */}
+                      <div className="px-4 sm:px-6 py-3.5 grid grid-cols-1 lg:grid-cols-[150px_minmax(220px,1fr)_170px_155px_155px] gap-3 lg:gap-6 items-center">
+                        {/* Coluna 1: Orçamento */}
+                        <div className="flex items-center justify-between lg:justify-start">
                           <span className="inline-flex items-center h-7 px-2.5 rounded-lg bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/25 text-xs font-extrabold tabular-nums">
                             {orc.codigo}
                           </span>
 
+                          {/* Valor visível no topo apenas no celular */}
                           <div className="text-right tabular-nums lg:hidden">
                             <strong className="text-sm font-extrabold text-brand-magenta block leading-tight">
                               {formatCurrency(orc.total)}
@@ -1479,8 +1480,8 @@ export function AdminOrcamentosSection({
                           </div>
                         </div>
 
-                        {/* Coluna 2: Cliente e Material */}
-                        <div className="lg:col-span-4 min-w-0">
+                        {/* Coluna 2: Cliente & Material */}
+                        <div className="min-w-0">
                           <strong className="text-sm font-extrabold text-brand-ink block truncate">
                             {orc.cliente_nome}
                           </strong>
@@ -1496,8 +1497,8 @@ export function AdminOrcamentosSection({
                           </div>
                         </div>
 
-                        {/* Coluna 3 (Desktop): Valor e Forma de Pagamento */}
-                        <div className="hidden lg:block lg:col-span-2 text-right tabular-nums">
+                        {/* Coluna 3: Valor / Pagamento (alinhado exatamente abaixo do título "VALOR / PAGAMENTO") */}
+                        <div className="hidden lg:block tabular-nums">
                           <strong className="text-base font-extrabold text-brand-magenta block leading-tight">
                             {formatCurrency(orc.total)}
                           </strong>
@@ -1506,8 +1507,8 @@ export function AdminOrcamentosSection({
                           </span>
                         </div>
 
-                        {/* Colunas 4 e 5 agrupadas no Mobile e alinhadas na mesma altura (h-9) no Desktop */}
-                        <div className="lg:col-span-4 flex items-center justify-between lg:justify-end gap-2.5 pt-1 lg:pt-0">
+                        {/* Coluna 4: Status (alinhado exatamente abaixo do título "STATUS") */}
+                        <div className="hidden lg:block">
                           <select
                             value={orc.status}
                             onChange={async (e) => {
@@ -1536,13 +1537,74 @@ export function AdminOrcamentosSection({
                                 );
                               }
                             }}
-                            className="h-9 flex-1 lg:flex-none lg:w-[136px] px-3 text-xs font-bold border border-brand-border rounded-lg bg-white text-brand-ink cursor-pointer"
+                            className="h-9 w-full px-3 text-xs font-bold border border-brand-border rounded-lg bg-white text-brand-ink cursor-pointer"
                           >
                             <option value="solicitado">Solicitado</option>
                             <option value="enviado">Enviado</option>
                             <option value="aprovado">Aprovado</option>
                             <option value="cancelado">Cancelado</option>
                           </select>
+                        </div>
+
+                        {/* Coluna 5: Ações — "Ver mais" primeiro e botão do WhatsApp no final */}
+                        <div className="flex items-center gap-2 pt-1 lg:pt-0">
+                          {/* Select de Status visível apenas no celular */}
+                          <select
+                            value={orc.status}
+                            onChange={async (e) => {
+                              const novoStatus = e.target
+                                .value as OrcamentoStatus;
+                              setOrcamentos((prev) =>
+                                prev.map((item) =>
+                                  item.id === orc.id
+                                    ? { ...item, status: novoStatus }
+                                    : item
+                                )
+                              );
+                              const res = await atualizarStatusOrcamentoAction(
+                                orc.id,
+                                novoStatus
+                              );
+                              if (!res.ok) {
+                                exibirAviso(
+                                  "erro",
+                                  res.erro || "Erro ao atualizar status."
+                                );
+                              } else {
+                                exibirAviso(
+                                  "ok",
+                                  `Status do orçamento ${orc.codigo} atualizado!`
+                                );
+                              }
+                            }}
+                            className="lg:hidden h-9 flex-1 px-3 text-xs font-bold border border-brand-border rounded-lg bg-white text-brand-ink cursor-pointer"
+                          >
+                            <option value="solicitado">Solicitado</option>
+                            <option value="enviado">Enviado</option>
+                            <option value="aprovado">Aprovado</option>
+                            <option value="cancelado">Cancelado</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOrcamentoExpandidoId(
+                                expandido ? null : orc.id
+                              )
+                            }
+                            className={`h-9 flex-1 lg:w-[110px] px-3 inline-flex items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                              expandido
+                                ? "bg-brand-ink text-white border-brand-ink"
+                                : "bg-white hover:bg-gray-50 text-brand-ink border-brand-border"
+                            }`}
+                          >
+                            <span>{expandido ? "Ocultar" : "Ver mais"}</span>
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                expandido ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
 
                           <button
                             type="button"
@@ -1576,27 +1638,6 @@ export function AdminOrcamentosSection({
                             className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shrink-0 transition-colors"
                           >
                             <MessageCircle className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setOrcamentoExpandidoId(
-                                expandido ? null : orc.id
-                              )
-                            }
-                            className={`h-9 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                              expandido
-                                ? "bg-brand-ink text-white border-brand-ink"
-                                : "bg-white hover:bg-gray-50 text-brand-ink border-brand-border"
-                            }`}
-                          >
-                            <span>{expandido ? "Ocultar" : "Ver mais"}</span>
-                            <ChevronDown
-                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                expandido ? "rotate-180" : ""
-                              }`}
-                            />
                           </button>
                         </div>
                       </div>
