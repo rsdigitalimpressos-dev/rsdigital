@@ -432,57 +432,44 @@ export function OrcamentoClient({
           </div>
         </header>
 
-        <main className="max-w-lg mx-auto px-4 sm:px-6 pt-10">
-          <div className="bg-white border border-brand-border rounded-2xl shadow-xs p-6 sm:p-8 space-y-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
+        <main className="max-w-md mx-auto px-4 sm:px-6 pt-10">
+          <div className="bg-white border border-brand-border rounded-2xl shadow-xs p-6 space-y-5 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-7 h-7" />
             </div>
 
-            <div className="space-y-1.5">
-              <span className="inline-block px-3 py-1 rounded-full bg-brand-ink text-white text-xs font-extrabold">
-                Protocolo {codigoOrcamento}
+            <div className="space-y-1">
+              <span className="inline-block px-2.5 py-0.5 rounded-lg bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/25 text-xs font-extrabold tabular-nums">
+                {codigoOrcamento}
               </span>
-              <h1 className="text-xl font-extrabold text-brand-ink pt-1">
-                Solicitação de Orçamento Recebida!
+              <h1 className="text-lg font-extrabold text-brand-ink pt-1">
+                Solicitação Enviada!
               </h1>
-              <p className="text-xs text-brand-muted leading-relaxed">
-                Nossa equipe da <strong>{config.nome_loja}</strong> já recebeu a
-                sua solicitação no painel e enviará o orçamento completo para o
-                seu WhatsApp{" "}
-                <strong>{maskWhatsApp(whatsappCliente)}</strong>
-                {emailCliente.trim() ? ` e e-mail (${emailCliente.trim()})` : ""}{" "}
-                em instantes.
+              <p className="text-xs text-brand-muted">
+                Enviaremos o orçamento para o seu WhatsApp em instantes.
               </p>
             </div>
 
-            <div className="text-left bg-[#FAFAFB] border border-brand-border rounded-xl p-4 space-y-2 text-xs">
-              <div>
-                <span className="text-brand-muted block">Colégio e Série</span>
-                <strong className="text-brand-ink font-bold">
-                  {colegioSelecionadoObj?.nome} · {serieSelecionadaObj?.nome}
-                </strong>
-              </div>
-              <div>
-                <span className="text-brand-muted block">
-                  Módulos solicitados ({modulosEscolhidosObjs.length})
-                </span>
-                <ul className="list-disc list-inside text-brand-ink font-semibold space-y-0.5 pt-0.5">
-                  {modulosEscolhidosObjs.map((m) => (
-                    <li key={m.id}>{obterResumoModulo(m).nomeComLivros}</li>
-                  ))}
-                </ul>
-              </div>
+            <div className="text-left bg-[#FAFAFB] border border-brand-border rounded-xl p-3.5 space-y-1 text-xs">
+              <strong className="text-brand-ink font-bold block">
+                {colegioSelecionadoObj?.nome} · {serieSelecionadaObj?.nome}
+              </strong>
+              <p className="text-brand-muted">
+                {modulosEscolhidosObjs
+                  .map((m) => obterResumoModulo(m).nomeComLivros)
+                  .join(", ")}
+              </p>
             </div>
 
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-2">
               <a
                 href={linkAvisarLojaWhatsApp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
+                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Agilizar atendimento no WhatsApp da Loja</span>
+                <span>Chamar no WhatsApp</span>
               </a>
 
               <button
@@ -494,10 +481,10 @@ export function OrcamentoClient({
                   setDisciplinasPorModulo({});
                   setObservacao("");
                 }}
-                className="w-full py-2.5 px-4 text-xs font-bold text-brand-muted hover:text-brand-ink inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 px-4 text-xs font-bold text-brand-muted hover:text-brand-ink inline-flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Solicitar outro orçamento</span>
+                <span>Novo orçamento</span>
               </button>
             </div>
           </div>
