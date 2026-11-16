@@ -153,3 +153,36 @@ export interface Pedido {
   itens: PedidoItem[];
 }
 
+export type OrcamentoStatus = "enviado" | "aprovado" | "cancelado";
+
+export interface OrcamentoItem {
+  modulo_id: string;
+  nome_modulo: string;
+  valor: number;
+}
+
+export interface OrcamentoRegistrado {
+  id: string;
+  codigo: string;
+  criado_em: string;
+  validade_dias: number;
+  cliente_nome: string;
+  whatsapp: string;
+  email: string;
+  colegio_id: string;
+  colegio_nome: string;
+  serie_id: string;
+  serie_nome: string;
+  forma_pagamento: FormaPagamento;
+  parcelas: number | null;
+  subtotal: number;
+  desconto: number;
+  juros: number;
+  total: number;
+  cupom_codigo: string | null;
+  observacao: string | null;
+  status: OrcamentoStatus;
+  itens: OrcamentoItem[];
+}
+
+

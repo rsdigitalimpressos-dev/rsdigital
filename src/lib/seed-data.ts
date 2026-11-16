@@ -6,6 +6,7 @@ import {
   LojaConfig,
   Modulo,
   ModuloLivroItem,
+  OrcamentoRegistrado,
   Pedido,
   Serie,
 } from "@/types/database";
@@ -18,6 +19,7 @@ export interface LocalDatabaseState {
   cupons: Cupom[];
   config: LojaConfig;
   pedidos: Pedido[];
+  orcamentos?: OrcamentoRegistrado[];
   lancamentos: LancamentoFinanceiro[];
   ultimoNumeroSeq: number;
 }

@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import {
   alternarItemImpressoServer,
   alternarPagoPedidoServer,
+  atualizarStatusOrcamentoServer,
   atualizarStatusPedidoServer,
   consultarPedidoPublicoServer,
   createServerSupabase,
@@ -13,6 +14,7 @@ import {
   duplicarSerieServer,
   excluirLancamentoFinanceiroServer,
   excluirLivroServer,
+  excluirOrcamentoServer,
   getAdminData,
   marcarLoteImpressoServer,
   salvarColegioServer,
@@ -21,6 +23,7 @@ import {
   salvarLancamentoFinanceiroServer,
   salvarLivroServer,
   salvarModuloServer,
+  salvarOrcamentoServer,
   salvarSerieServer,
   validarCupomServer,
 } from "@/lib/repository";
@@ -30,6 +33,8 @@ import {
   LancamentoTipo,
   LojaConfig,
   ModuloLivroItem,
+  OrcamentoRegistrado,
+  OrcamentoStatus,
   PedidoStatus,
 } from "@/types/database";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -424,3 +429,65 @@ export async function obterDadosAdminAction() {
   const dados = await getAdminData();
   return { ok: true as const, dados };
 }
+
+export async function validarSenhaOrcamentoAction(senha: string) {
+  const senhaLimpa = (senha || "").trim();
+  const senhaEsperada =
+    process.env.ADMIN_ACCESS_PASSWORD ||
+    process.env.ADMIN_DEMO_PASSWORD ||
+    "rsdigital123";
+
+  if (!senhaLimpa || senhaLimpa !== senhaEsperada) {
+    return { ok: false, erro: "Senha incorreta. Informe a senha do administrador." };
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(DEMO_SESSION_COOKIE, gerarTokenDemoAssinado(), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  return { ok: true };
+}
+
+export async function salvarOrcamentoAction(
+  dados: Omit<OrcamentoRegistrado, "id" | "criado_em" | "status"> & {
+    id?: string;
+    status?: OrcamentoStatus;
+  }
+) {
+  const res = await salvarOrcamentoServer(dados);
+  if (res.ok) {
+    revalidatePath("/admin");
+  }
+  return res;
+}
+
+export async function atualizarStatusOrcamentoAction(
+  id: string,
+  status: OrcamentoStatus
+) {
+  const auth = await garantirAdminAutenticado();
+  if (!auth.permitido) return { ok: false, erro: auth.erro };
+
+  const res = await atualizarStatusOrcamentoServer(id, status);
+  if (res.ok) {
+    revalidatePath("/admin");
+  }
+  return res;
+}
+
+export async function excluirOrcamentoAction(id: string) {
+  const auth = await garantirAdminAutenticado();
+  if (!auth.permitido) return { ok: false, erro: auth.erro };
+
+  const res = await excluirOrcamentoServer(id);
+  if (res.ok) {
+    revalidatePath("/admin");
+  }
+  return res;
+}
+

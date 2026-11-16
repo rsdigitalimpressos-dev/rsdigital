@@ -17,6 +17,7 @@ export default async function AdminPage() {
   return (
     <AdminDashboard
       initialPedidos={dados.pedidos}
+      initialOrcamentos={dados.orcamentos}
       initialColegios={dados.colegios}
       initialSeries={dados.series}
       initialModulos={dados.modulos}

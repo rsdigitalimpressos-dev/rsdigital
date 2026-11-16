@@ -28,6 +28,8 @@ import {
   Modulo,
   ModuloLivroItem,
   ModuloPublico,
+  OrcamentoRegistrado,
+  OrcamentoStatus,
   Pedido,
   PedidoItem,
   PedidoStatus,
@@ -702,6 +704,7 @@ export async function criarPedidoServer(input: {
  */
 export async function getAdminData(): Promise<{
   pedidos: Pedido[];
+  orcamentos: OrcamentoRegistrado[];
   colegios: Colegio[];
   series: Serie[];
   modulos: Modulo[];
@@ -761,13 +764,24 @@ export async function getAdminData(): Promise<{
         const colegios = (colRes.data || []) as Colegio[];
         const series = (serRes.data || []) as Serie[];
         const serMap = new Map(series.map((s) => [s.id, s.nome]));
-        const livrosSupabase: Livro[] =
+        const rawLivros =
           !livRes.error && Array.isArray(livRes.data)
-            ? (livRes.data as Livro[]).map((l) => ({
-                ...l,
-                valor: Number(l.valor),
-              }))
+            ? (livRes.data as Livro[])
             : [];
+        const livrosSupabase: Livro[] = rawLivros
+          .filter((l) => !String(l.id).startsWith("orcamento:"))
+          .map((l) => ({
+            ...l,
+            valor: Number(l.valor),
+          }));
+        const orcamentosSupabase: OrcamentoRegistrado[] = rawLivros
+          .filter((l) => String(l.id).startsWith("orcamento:"))
+          .map((l) => l.capas_por_serie as unknown as OrcamentoRegistrado)
+          .filter((o) => o && typeof o.codigo === "string")
+          .sort(
+            (a, b) =>
+              new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime()
+          );
         const modulos = ((modRes.data || []) as Modulo[]).map((m) => {
           const sNome = serMap.get(m.serie_id);
           const livrosMod =
@@ -822,6 +836,7 @@ export async function getAdminData(): Promise<{
 
         return {
           pedidos,
+          orcamentos: orcamentosSupabase,
           colegios,
           series,
           modulos,
@@ -843,6 +858,7 @@ export async function getAdminData(): Promise<{
 
     return {
       pedidos: [],
+      orcamentos: [],
       colegios: [],
       series: [],
       modulos: [],
@@ -882,8 +898,14 @@ export async function getAdminData(): Promise<{
     b.data.localeCompare(a.data)
   );
 
+  const orcamentosOrdenados = [...(db.orcamentos || [])].sort(
+    (a, b) =>
+      new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime()
+  );
+
   return {
     pedidos: pedidosEnriquecidos,
+    orcamentos: orcamentosOrdenados,
     colegios: db.colegios,
     series: db.series,
     modulos: db.modulos,
@@ -2340,4 +2362,150 @@ export async function consultarPedidoPublicoServer(
     pedido: encontrados[0],
     pedidos: encontrados,
   };
+}
+
+export async function salvarOrcamentoServer(
+  dados: Omit<OrcamentoRegistrado, "id" | "criado_em" | "status"> & {
+    id?: string;
+    status?: OrcamentoStatus;
+  }
+): Promise<{ ok: boolean; orcamento?: OrcamentoRegistrado; erro?: string }> {
+  const idLimpo = dados.id?.trim() || dados.codigo.trim() || `orc-${Date.now()}`;
+  const orcamento: OrcamentoRegistrado = {
+    id: idLimpo,
+    codigo: dados.codigo.trim(),
+    criado_em: new Date().toISOString(),
+    validade_dias: Math.max(1, Number(dados.validade_dias) || 7),
+    cliente_nome: dados.cliente_nome.trim() || "Cliente RS Digital",
+    whatsapp: onlyDigits(dados.whatsapp),
+    email: dados.email.trim(),
+    colegio_id: dados.colegio_id,
+    colegio_nome: dados.colegio_nome,
+    serie_id: dados.serie_id,
+    serie_nome: dados.serie_nome,
+    forma_pagamento: dados.forma_pagamento,
+    parcelas: dados.parcelas,
+    subtotal: Number(dados.subtotal) || 0,
+    desconto: Number(dados.desconto) || 0,
+    juros: Number(dados.juros) || 0,
+    total: Number(dados.total) || 0,
+    cupom_codigo: dados.cupom_codigo || null,
+    observacao: dados.observacao || null,
+    status: dados.status || "enviado",
+    itens: dados.itens || [],
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createAdminSupabase();
+      const { error } = await supabase.from("livros").upsert(
+        {
+          id: `orcamento:${orcamento.id}`,
+          nome: orcamento.codigo,
+          categoria: "didatico",
+          valor: orcamento.total,
+          ativo: false,
+          serie_nome: orcamento.serie_nome,
+          capas_por_serie: orcamento as unknown as Record<string, string>,
+        },
+        { onConflict: "id" }
+      );
+      if (error) {
+        return { ok: false, erro: error.message };
+      }
+      return { ok: true, orcamento };
+    } catch (e) {
+      console.warn("Erro ao salvar orçamento no Supabase:", e);
+      return { ok: false, erro: "Erro ao salvar orçamento." };
+    }
+  }
+
+  const db = readLocalDb();
+  if (!Array.isArray(db.orcamentos)) {
+    db.orcamentos = [];
+  }
+  const idx = db.orcamentos.findIndex(
+    (o) => o.id === orcamento.id || o.codigo === orcamento.codigo
+  );
+  if (idx >= 0) {
+    db.orcamentos[idx] = orcamento;
+  } else {
+    db.orcamentos.unshift(orcamento);
+  }
+  writeLocalDb(db);
+  return { ok: true, orcamento };
+}
+
+export async function atualizarStatusOrcamentoServer(
+  id: string,
+  status: OrcamentoStatus
+): Promise<{ ok: boolean; erro?: string }> {
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createAdminSupabase();
+      const rowId = id.startsWith("orcamento:") ? id : `orcamento:${id}`;
+      const { data: existing, error: fetchErr } = await supabase
+        .from("livros")
+        .select("*")
+        .eq("id", rowId)
+        .maybeSingle();
+      if (fetchErr || !existing) {
+        return { ok: false, erro: "Orçamento não encontrado." };
+      }
+      const atual = (existing.capas_por_serie || {}) as unknown as OrcamentoRegistrado;
+      const atualizado: OrcamentoRegistrado = {
+        ...atual,
+        status,
+      };
+      const { error } = await supabase
+        .from("livros")
+        .update({
+          capas_por_serie: atualizado as unknown as Record<string, string>,
+        })
+        .eq("id", rowId);
+      if (error) {
+        return { ok: false, erro: error.message };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, erro: "Erro ao atualizar status do orçamento." };
+    }
+  }
+
+  const db = readLocalDb();
+  if (!Array.isArray(db.orcamentos)) {
+    db.orcamentos = [];
+  }
+  const alvo = db.orcamentos.find((o) => o.id === id || o.codigo === id);
+  if (!alvo) {
+    return { ok: false, erro: "Orçamento não encontrado." };
+  }
+  alvo.status = status;
+  writeLocalDb(db);
+  return { ok: true };
+}
+
+export async function excluirOrcamentoServer(
+  id: string
+): Promise<{ ok: boolean; erro?: string }> {
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createAdminSupabase();
+      const rowId = id.startsWith("orcamento:") ? id : `orcamento:${id}`;
+      const { error } = await supabase.from("livros").delete().eq("id", rowId);
+      if (error) {
+        return { ok: false, erro: error.message };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, erro: "Erro ao excluir orçamento." };
+    }
+  }
+
+  const db = readLocalDb();
+  if (Array.isArray(db.orcamentos)) {
+    db.orcamentos = db.orcamentos.filter((o) => o.id !== id && o.codigo !== id);
+    writeLocalDb(db);
+  }
+  return { ok: true };
 }
