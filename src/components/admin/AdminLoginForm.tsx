@@ -48,6 +48,8 @@ export function AdminLoginForm({}: AdminLoginFormProps) {
 
   return (
     <>
+      <SplashScreen />
+
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between relative overflow-hidden">
         {/* Luzes sutis da identidade CMYK ao fundo */}
         <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[260px] bg-gradient-to-r from-brand-cyan/15 via-brand-magenta/15 to-brand-yellow/20 blur-3xl rounded-full" />

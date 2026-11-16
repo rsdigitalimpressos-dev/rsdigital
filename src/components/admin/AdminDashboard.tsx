@@ -1857,6 +1857,8 @@ export function AdminDashboard({
 
   return (
     <>
+      <SplashScreen />
+
       <div className="min-h-screen bg-[#F4F6F9] text-brand-ink flex flex-col lg:flex-row">
         {/* Backdrop escuro quando o menu lateral mobile está aberto */}
         {menuMobileAberto && (
