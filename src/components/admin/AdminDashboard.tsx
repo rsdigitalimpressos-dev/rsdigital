@@ -1927,7 +1927,7 @@ export function AdminDashboard({
                 })}
               </div>
 
-              <div className="pt-3 border-t border-white/10">
+              <div className="pt-3 border-t border-white/10 space-y-1">
                 <a
                   href="/pedido"
                   target="_blank"
@@ -1942,6 +1942,26 @@ export function AdminDashboard({
                   <span className="flex items-center gap-2.5">
                     <ExternalLink className="w-4 h-4 text-brand-cyan shrink-0" />
                     {!sidebarRecolhida && <span>Página de Pedidos</span>}
+                  </span>
+                  {!sidebarRecolhida && (
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  )}
+                </a>
+
+                <a
+                  href="/orcamento"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Abrir página de construção de orçamento"
+                  className={`w-full flex items-center rounded-lg text-xs font-medium text-white/75 hover:text-white hover:bg-white/5 transition-colors ${
+                    sidebarRecolhida
+                      ? "justify-center p-2.5"
+                      : "justify-between px-3 py-2"
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <FileText className="w-4 h-4 text-brand-yellow shrink-0" />
+                    {!sidebarRecolhida && <span>Página de Orçamento</span>}
                   </span>
                   {!sidebarRecolhida && (
                     <ChevronRight className="w-3.5 h-3.5 opacity-60" />
