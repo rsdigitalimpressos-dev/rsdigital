@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    --font-sora: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-brand: "Outfit", "Inter", system-ui, -apple-system, sans-serif;
     --brand-cyan: #00A0DC;
     --brand-magenta: #E5007D;
     --brand-yellow: #FFD200;
