@@ -1436,13 +1436,13 @@ export function AdminOrcamentosSection({
 
           return (
             <div>
-              {/* Cabeçalho das Colunas (Desktop) — cada coluna começa exatamente no mesmo eixo X do item abaixo */}
-              <div className="hidden lg:grid lg:grid-cols-[150px_minmax(220px,1fr)_170px_155px_155px] gap-6 px-6 py-2.5 bg-[#F8FAFC] border-b border-brand-border/70 text-[11px] font-bold uppercase tracking-wider text-brand-muted items-center">
+              {/* Cabeçalho das Colunas (Desktop) — sem o título "Ações" */}
+              <div className="hidden lg:grid lg:grid-cols-[150px_minmax(220px,1fr)_170px_145px_140px] gap-6 px-6 py-2.5 bg-[#F8FAFC] border-b border-brand-border/70 text-[11px] font-bold uppercase tracking-wider text-brand-muted items-center">
                 <div>Orçamento</div>
                 <div>Cliente & Material</div>
                 <div>Valor / Pagamento</div>
                 <div>Status</div>
-                <div>Ações</div>
+                <div />
               </div>
 
               <div className="divide-y divide-brand-border/70">
@@ -1455,6 +1455,14 @@ export function AdminOrcamentosSection({
                   const serieCurta = formatarSerieCurtaOrcamento(
                     orc.serie_nome
                   );
+                  const dotClass =
+                    orc.status === "solicitado"
+                      ? "bg-amber-500"
+                      : orc.status === "enviado"
+                        ? "bg-brand-cyan"
+                        : orc.status === "aprovado"
+                          ? "bg-emerald-600"
+                          : "bg-gray-400";
 
                   return (
                     <div
@@ -1462,7 +1470,7 @@ export function AdminOrcamentosSection({
                       className="bg-white hover:bg-gray-50/50 transition-colors"
                     >
                       {/* LINHA PRINCIPAL (5 colunas idênticas ao cabeçalho no Desktop) */}
-                      <div className="px-4 sm:px-6 py-3.5 grid grid-cols-1 lg:grid-cols-[150px_minmax(220px,1fr)_170px_155px_155px] gap-3 lg:gap-6 items-center">
+                      <div className="px-4 sm:px-6 py-3.5 grid grid-cols-1 lg:grid-cols-[150px_minmax(220px,1fr)_170px_145px_140px] gap-3 lg:gap-6 items-center">
                         {/* Coluna 1: Orçamento */}
                         <div className="flex items-center justify-between lg:justify-start">
                           <span className="inline-flex items-center h-7 px-2.5 rounded-lg bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/25 text-xs font-extrabold tabular-nums">
@@ -1497,7 +1505,7 @@ export function AdminOrcamentosSection({
                           </div>
                         </div>
 
-                        {/* Coluna 3: Valor / Pagamento (alinhado exatamente abaixo do título "VALOR / PAGAMENTO") */}
+                        {/* Coluna 3: Valor / Pagamento */}
                         <div className="hidden lg:block tabular-nums">
                           <strong className="text-base font-extrabold text-brand-magenta block leading-tight">
                             {formatCurrency(orc.total)}
@@ -1507,138 +1515,154 @@ export function AdminOrcamentosSection({
                           </span>
                         </div>
 
-                        {/* Coluna 4: Status (alinhado exatamente abaixo do título "STATUS") */}
-                        <div className="hidden lg:block">
-                          <select
-                            value={orc.status}
-                            onChange={async (e) => {
-                              const novoStatus = e.target
-                                .value as OrcamentoStatus;
-                              setOrcamentos((prev) =>
-                                prev.map((item) =>
-                                  item.id === orc.id
-                                    ? { ...item, status: novoStatus }
-                                    : item
-                                )
-                              );
-                              const res = await atualizarStatusOrcamentoAction(
-                                orc.id,
-                                novoStatus
-                              );
-                              if (!res.ok) {
-                                exibirAviso(
-                                  "erro",
-                                  res.erro || "Erro ao atualizar status."
-                                );
-                              } else {
-                                exibirAviso(
-                                  "ok",
-                                  `Status do orçamento ${orc.codigo} atualizado!`
-                                );
-                              }
-                            }}
-                            className="h-9 w-full px-3 text-xs font-bold border border-brand-border rounded-lg bg-white text-brand-ink cursor-pointer"
-                          >
-                            <option value="solicitado">Solicitado</option>
-                            <option value="enviado">Enviado</option>
-                            <option value="aprovado">Aprovado</option>
-                            <option value="cancelado">Cancelado</option>
-                          </select>
-                        </div>
-
-                        {/* Coluna 5: Ações — "Ver mais" primeiro e botão do WhatsApp no final */}
-                        <div className="flex items-center gap-2 pt-1 lg:pt-0">
-                          {/* Select de Status visível apenas no celular */}
-                          <select
-                            value={orc.status}
-                            onChange={async (e) => {
-                              const novoStatus = e.target
-                                .value as OrcamentoStatus;
-                              setOrcamentos((prev) =>
-                                prev.map((item) =>
-                                  item.id === orc.id
-                                    ? { ...item, status: novoStatus }
-                                    : item
-                                )
-                              );
-                              const res = await atualizarStatusOrcamentoAction(
-                                orc.id,
-                                novoStatus
-                              );
-                              if (!res.ok) {
-                                exibirAviso(
-                                  "erro",
-                                  res.erro || "Erro ao atualizar status."
-                                );
-                              } else {
-                                exibirAviso(
-                                  "ok",
-                                  `Status do orçamento ${orc.codigo} atualizado!`
-                                );
-                              }
-                            }}
-                            className="lg:hidden h-9 flex-1 px-3 text-xs font-bold border border-brand-border rounded-lg bg-white text-brand-ink cursor-pointer"
-                          >
-                            <option value="solicitado">Solicitado</option>
-                            <option value="enviado">Enviado</option>
-                            <option value="aprovado">Aprovado</option>
-                            <option value="cancelado">Cancelado</option>
-                          </select>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setOrcamentoExpandidoId(
-                                expandido ? null : orc.id
-                              )
-                            }
-                            className={`h-9 flex-1 lg:w-[110px] px-3 inline-flex items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                              expandido
-                                ? "bg-brand-ink text-white border-brand-ink"
-                                : "bg-white hover:bg-gray-50 text-brand-ink border-brand-border"
-                            }`}
-                          >
-                            <span>{expandido ? "Ocultar" : "Ver mais"}</span>
-                            <ChevronDown
-                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                expandido ? "rotate-180" : ""
-                              }`}
+                        {/* Coluna 4: Status discreto (sem caixa pesada) */}
+                        <div className="hidden lg:flex items-center">
+                          <div className="relative inline-flex items-center">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full absolute left-2.5 pointer-events-none ${dotClass}`}
                             />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (orc.status === "solicitado") {
+                            <select
+                              value={orc.status}
+                              onChange={async (e) => {
+                                const novoStatus = e.target
+                                  .value as OrcamentoStatus;
                                 setOrcamentos((prev) =>
                                   prev.map((item) =>
                                     item.id === orc.id
-                                      ? { ...item, status: "enviado" }
+                                      ? { ...item, status: novoStatus }
                                       : item
                                   )
                                 );
-                                void atualizarStatusOrcamentoAction(
-                                  orc.id,
-                                  "enviado"
+                                const res =
+                                  await atualizarStatusOrcamentoAction(
+                                    orc.id,
+                                    novoStatus
+                                  );
+                                if (!res.ok) {
+                                  exibirAviso(
+                                    "erro",
+                                    res.erro || "Erro ao atualizar status."
+                                  );
+                                } else {
+                                  exibirAviso(
+                                    "ok",
+                                    `Status do orçamento ${orc.codigo} atualizado!`
+                                  );
+                                }
+                              }}
+                              className="appearance-none bg-transparent hover:bg-gray-100/80 border border-transparent hover:border-brand-border/70 rounded-lg pl-6 pr-6 py-1.5 text-xs font-medium text-brand-ink transition-colors cursor-pointer focus:outline-none"
+                            >
+                              <option value="solicitado">Solicitado</option>
+                              <option value="enviado">Enviado</option>
+                              <option value="aprovado">Aprovado</option>
+                              <option value="cancelado">Cancelado</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-brand-muted absolute right-2 pointer-events-none" />
+                          </div>
+                        </div>
+
+                        {/* Coluna 5: "Ver mais" discreto + botão do WhatsApp no final */}
+                        <div className="flex items-center justify-between lg:justify-end gap-2 pt-1 lg:pt-0">
+                          {/* Select de Status discreto visível apenas no celular */}
+                          <div className="relative inline-flex items-center lg:hidden">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full absolute left-2.5 pointer-events-none ${dotClass}`}
+                            />
+                            <select
+                              value={orc.status}
+                              onChange={async (e) => {
+                                const novoStatus = e.target
+                                  .value as OrcamentoStatus;
+                                setOrcamentos((prev) =>
+                                  prev.map((item) =>
+                                    item.id === orc.id
+                                      ? { ...item, status: novoStatus }
+                                      : item
+                                  )
                                 );
+                                const res =
+                                  await atualizarStatusOrcamentoAction(
+                                    orc.id,
+                                    novoStatus
+                                  );
+                                if (!res.ok) {
+                                  exibirAviso(
+                                    "erro",
+                                    res.erro || "Erro ao atualizar status."
+                                  );
+                                } else {
+                                  exibirAviso(
+                                    "ok",
+                                    `Status do orçamento ${orc.codigo} atualizado!`
+                                  );
+                                }
+                              }}
+                              className="appearance-none bg-gray-50 border border-brand-border/60 rounded-lg pl-6 pr-6 py-1.5 text-xs font-medium text-brand-ink cursor-pointer"
+                            >
+                              <option value="solicitado">Solicitado</option>
+                              <option value="enviado">Enviado</option>
+                              <option value="aprovado">Aprovado</option>
+                              <option value="cancelado">Cancelado</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-brand-muted absolute right-2 pointer-events-none" />
+                          </div>
+
+                          <div className="flex items-center gap-2 ml-auto">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOrcamentoExpandidoId(
+                                  expandido ? null : orc.id
+                                )
                               }
-                              const msg = montarTextoWhatsApp(orc);
-                              const fone = onlyDigits(orc.whatsapp);
-                              const url =
-                                fone.length >= 10
-                                  ? gerarLinkWhatsApp(fone, msg)
-                                  : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-                              window.open(
-                                url,
-                                "_blank",
-                                "noopener,noreferrer"
-                              );
-                            }}
-                            title="Enviar orçamento no WhatsApp do cliente"
-                            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shrink-0 transition-colors"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                                expandido
+                                  ? "text-brand-ink bg-gray-100 font-semibold"
+                                  : "text-brand-muted hover:text-brand-ink hover:bg-gray-100/80"
+                              }`}
+                            >
+                              <span>{expandido ? "Ocultar" : "Ver mais"}</span>
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  expandido ? "rotate-180" : ""
+                                }`}
+                              />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (orc.status === "solicitado") {
+                                  setOrcamentos((prev) =>
+                                    prev.map((item) =>
+                                      item.id === orc.id
+                                        ? { ...item, status: "enviado" }
+                                        : item
+                                    )
+                                  );
+                                  void atualizarStatusOrcamentoAction(
+                                    orc.id,
+                                    "enviado"
+                                  );
+                                }
+                                const msg = montarTextoWhatsApp(orc);
+                                const fone = onlyDigits(orc.whatsapp);
+                                const url =
+                                  fone.length >= 10
+                                    ? gerarLinkWhatsApp(fone, msg)
+                                    : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+                                window.open(
+                                  url,
+                                  "_blank",
+                                  "noopener,noreferrer"
+                                );
+                              }}
+                              title="Enviar orçamento no WhatsApp do cliente"
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shrink-0 transition-colors"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
