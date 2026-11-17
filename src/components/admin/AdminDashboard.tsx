@@ -2941,13 +2941,25 @@ export function AdminDashboard({
                                       : ""
                                   }`}
                                 >
-                                  {/* COLUNA 1: CLIENTE (#0004 + Nome em linha única) */}
+                                  {/* COLUNA 1: CLIENTE (#0004 + Nome clicável para ver observações/detalhes) */}
                                   <div className="min-w-0 flex items-center gap-2">
                                     <span className="text-xs text-brand-muted tabular-nums shrink-0">
                                       #{p.numero}
                                     </span>
-                                    <span className="text-[13px] font-medium text-brand-ink truncate">
-                                      {nomeCliente}
+                                    <span
+                                      title={
+                                        ressalvasLista.length > 0
+                                          ? ressalvasLista.join(" | ")
+                                          : "Clique para ver detalhes e observações do pedido"
+                                      }
+                                      className="text-[13px] font-medium text-brand-ink hover:text-brand-cyan hover:underline truncate inline-flex items-center gap-1.5"
+                                    >
+                                      <span className="truncate">
+                                        {nomeCliente}
+                                      </span>
+                                      {ressalvasLista.length > 0 && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                      )}
                                     </span>
                                   </div>
 
@@ -3052,21 +3064,6 @@ export function AdminDashboard({
                                       <span className="text-xs text-brand-muted tabular-nums">
                                         +{totalItens - 2} ({impressosCount}/
                                         {totalItens})
-                                      </span>
-                                    )}
-
-                                    {ressalvasLista.length > 0 && (
-                                      <span
-                                        title={ressalvasLista.join(" | ")}
-                                        className="inline-flex items-center gap-1 text-[11px] text-amber-700 font-medium max-w-[200px]"
-                                      >
-                                        <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                                        <span className="truncate">
-                                          {ressalvasLista[0]}
-                                          {ressalvasLista.length > 1
-                                            ? ` (+${ressalvasLista.length - 1})`
-                                            : ""}
-                                        </span>
                                       </span>
                                     )}
                                   </div>
