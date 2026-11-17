@@ -591,8 +591,8 @@ export async function criarPedidoServer(input: {
     const livrosEscolhidos =
       Array.isArray(escolhidosRaw) && escolhidosRaw.length > 0
         ? livrosDisponiveis.filter(
-            (l) => escolhidosRaw.includes(l.id) || escolhidosRaw.includes(l.nome)
-          )
+          (l) => escolhidosRaw.includes(l.id) || escolhidosRaw.includes(l.nome)
+        )
         : livrosDisponiveis;
 
     if (livrosEscolhidos.length === 0) {
@@ -616,10 +616,10 @@ export async function criarPedidoServer(input: {
     const valorEfetivo = todosSelecionados
       ? valorBase
       : Number(
-          livrosEscolhidos
-            .reduce((acc, l) => acc + Number(l.valor), 0)
-            .toFixed(2)
-        );
+        livrosEscolhidos
+          .reduce((acc, l) => acc + Number(l.valor), 0)
+          .toFixed(2)
+      );
 
     const nomeFormatado = todosSelecionados
       ? m.nome
@@ -769,7 +769,11 @@ export async function getAdminData(): Promise<{
             ? (livRes.data as Livro[])
             : [];
         const livrosSupabase: Livro[] = rawLivros
-          .filter((l) => !String(l.id).startsWith("orcamento:"))
+          .filter(
+            (l) =>
+              !String(l.id).startsWith("orcamento:") &&
+              String(l.id) !== "__rs_admin_credenciais__"
+          )
           .map((l) => ({
             ...l,
             valor: Number(l.valor),
@@ -1323,15 +1327,15 @@ export async function duplicarSerieServer(params: {
     const livrosCopiados =
       Array.isArray(m.livros) && m.livros.length > 0
         ? m.livros.map((l) => {
-            const livroCat = (db.livros || []).find((cat) => cat.id === l.id);
-            return {
-              ...l,
-              serie_nome: nomeLimpo,
-              capa_url: livroCat
-                ? resolverCapaLivroParaSerie(livroCat, nomeLimpo)
-                : l.capa_url || null,
-            };
-          })
+          const livroCat = (db.livros || []).find((cat) => cat.id === l.id);
+          return {
+            ...l,
+            serie_nome: nomeLimpo,
+            capa_url: livroCat
+              ? resolverCapaLivroParaSerie(livroCat, nomeLimpo)
+              : l.capa_url || null,
+          };
+        })
         : getLivrosPadraoPorModulo(m.nome, nomeLimpo, db.livros);
     return {
       id: `mod-dup-${Date.now()}-${idx}`,
@@ -1384,14 +1388,14 @@ export async function salvarModuloServer(dados: {
     dados.livros
   )
     ? dados.livros
-        .filter((l) => l && l.nome && l.nome.trim() !== "")
-        .map((l, idx) => ({
-          id: l.id || `liv-mod-${idx + 1}`,
-          nome: l.nome.trim(),
-          valor: Math.max(0, Number(l.valor) || 0),
-          serie_nome: l.serie_nome || null,
-          capa_url: l.capa_url || null,
-        }))
+      .filter((l) => l && l.nome && l.nome.trim() !== "")
+      .map((l, idx) => ({
+        id: l.id || `liv-mod-${idx + 1}`,
+        nome: l.nome.trim(),
+        valor: Math.max(0, Number(l.valor) || 0),
+        serie_nome: l.serie_nome || null,
+        capa_url: l.capa_url || null,
+      }))
     : undefined;
 
   const disciplinasLimpas =
@@ -1399,8 +1403,8 @@ export async function salvarModuloServer(dados: {
       ? livrosLimpos.map((l) => l.nome)
       : Array.isArray(dados.disciplinas)
         ? Array.from(
-            new Set(dados.disciplinas.map((d) => d.trim()).filter(Boolean))
-          )
+          new Set(dados.disciplinas.map((d) => d.trim()).filter(Boolean))
+        )
         : undefined;
 
   const capaLimpa =
@@ -2273,9 +2277,9 @@ export async function consultarPedidoPublicoServer(
           criado_em: String(item.criado_em),
           itens: Array.isArray(item.itens)
             ? item.itens.map((i: Record<string, unknown>) => ({
-                nome_modulo: String(i.nome_modulo),
-                valor: Number(i.valor),
-              }))
+              nome_modulo: String(i.nome_modulo),
+              valor: Number(i.valor),
+            }))
             : [],
         }));
 
@@ -2508,4 +2512,133 @@ export async function excluirOrcamentoServer(
     writeLocalDb(db);
   }
   return { ok: true };
+}
+
+export async function obterCredenciaisAdminServer(): Promise<{
+  email: string;
+  password: string;
+}> {
+  const padrao = {
+    email: process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br",
+    password:
+      process.env.ADMIN_ACCESS_PASSWORD ||
+      process.env.ADMIN_DEMO_PASSWORD ||
+      "rsdigital123",
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createAdminSupabase();
+      const { data, error } = await supabase
+        .from("livros")
+        .select("capas_por_serie")
+        .eq("id", "__rs_admin_credenciais__")
+        .maybeSingle();
+
+      if (!error && data && data.capas_por_serie) {
+        const cred = data.capas_por_serie as Record<string, string>;
+        if (cred.password) {
+          return {
+            email: cred.email || padrao.email,
+            password: cred.password,
+          };
+        }
+      }
+    } catch {
+      // fallback para credencial padrão
+    }
+    return padrao;
+  }
+
+  const db = readLocalDb();
+  if (db.adminCredenciais?.password) {
+    return {
+      email: db.adminCredenciais.email || padrao.email,
+      password: db.adminCredenciais.password,
+    };
+  }
+  return padrao;
+}
+
+export async function alterarSenhaAdminServer(dados: {
+  senhaAtual: string;
+  novaSenha: string;
+}): Promise<{
+  ok: boolean;
+  email?: string;
+  password?: string;
+  erro?: string;
+}> {
+  const senhaAtual = (dados.senhaAtual || "").trim();
+  const novaSenha = (dados.novaSenha || "").trim();
+
+  if (!senhaAtual) {
+    return { ok: false, erro: "Informe a senha atual." };
+  }
+  if (novaSenha.length < 6) {
+    return {
+      ok: false,
+      erro: "A nova senha deve ter pelo menos 6 caracteres.",
+    };
+  }
+
+  const credAtual = await obterCredenciaisAdminServer();
+  if (senhaAtual !== credAtual.password) {
+    return { ok: false, erro: "A senha atual informada está incorreta." };
+  }
+
+  const novasCredenciais = {
+    email: credAtual.email,
+    password: novaSenha,
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createAdminSupabase();
+      const { error } = await supabase.from("livros").upsert(
+        {
+          id: "__rs_admin_credenciais__",
+          nome: "ADMIN_CRED",
+          categoria: "didatico",
+          valor: 0,
+          ativo: false,
+          capas_por_serie: novasCredenciais,
+        },
+        { onConflict: "id" }
+      );
+      if (error) {
+        return { ok: false, erro: error.message };
+      }
+
+      // Caso também exista sessão Supabase Auth ativa, atualiza a senha nela também
+      try {
+        const serverSb = await createServerSupabase();
+        const {
+          data: { user },
+        } = await serverSb.auth.getUser();
+        if (user) {
+          await serverSb.auth.updateUser({ password: novaSenha });
+        }
+      } catch {
+        // ignora se não for sessão Supabase Auth
+      }
+
+      return {
+        ok: true,
+        email: novasCredenciais.email,
+        password: novasCredenciais.password,
+      };
+    } catch {
+      return { ok: false, erro: "Erro ao salvar nova senha no banco." };
+    }
+  }
+
+  const db = readLocalDb();
+  db.adminCredenciais = novasCredenciais;
+  writeLocalDb(db);
+  return {
+    ok: true,
+    email: novasCredenciais.email,
+    password: novasCredenciais.password,
+  };
 }

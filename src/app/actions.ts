@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import {
   alternarItemImpressoServer,
   alternarPagoPedidoServer,
+  alterarSenhaAdminServer,
   atualizarStatusOrcamentoServer,
   atualizarStatusPedidoServer,
   consultarPedidoPublicoServer,
@@ -17,6 +18,7 @@ import {
   excluirOrcamentoServer,
   getAdminData,
   marcarLoteImpressoServer,
+  obterCredenciaisAdminServer,
   salvarColegioServer,
   salvarConfigServer,
   salvarCupomServer,
@@ -41,19 +43,30 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 const DEMO_SESSION_COOKIE = "rs_digital_admin_auth_v3";
 
-function gerarTokenDemoAssinado(): string {
-  const email = (process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br").toLowerCase();
-  const secret = process.env.ADMIN_DEMO_PASSWORD || "rsdigital123";
+function gerarTokenDemoAssinado(
+  emailParam?: string,
+  secretParam?: string
+): string {
+  const email = (
+    emailParam ||
+    process.env.ADMIN_DEMO_EMAIL ||
+    "admin@rsdigital.com.br"
+  ).toLowerCase();
+  const secret =
+    secretParam || process.env.ADMIN_DEMO_PASSWORD || "rsdigital123";
   return crypto
     .createHmac("sha256", `rs-digital-secret:${secret}`)
     .update(`demo-auth:${email}`)
     .digest("hex");
 }
 
-function validarTokenDemo(cookieVal: string | undefined): boolean {
+function validarTokenDemo(
+  cookieVal: string | undefined,
+  emailParam?: string,
+  secretParam?: string
+): boolean {
   if (!cookieVal) return false;
-  // Mantém compatibilidade com sessão local já aberta ou token assinado
-  const esperado = gerarTokenDemoAssinado();
+  const esperado = gerarTokenDemoAssinado(emailParam, secretParam);
   if (cookieVal.length === esperado.length) {
     return crypto.timingSafeEqual(
       Buffer.from(cookieVal, "utf-8"),
@@ -117,24 +130,27 @@ export async function loginAdminAction(email: string, password: string) {
     }
   }
 
-  // Permite acesso com a credencial administrativa configurada (ou padrão admin@rsdigital.com.br / rsdigital123)
-  const expectedEmail =
-    process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br";
-  const expectedPassword =
-    process.env.ADMIN_DEMO_PASSWORD || "rsdigital123";
+  // Verifica credencial administrativa ativa (salva nas Configurações do banco ou padrão)
+  const credAtiva = await obterCredenciaisAdminServer();
+  const expectedEmail = credAtiva.email;
+  const expectedPassword = credAtiva.password;
 
   if (
     cleanEmail.toLowerCase() === expectedEmail.toLowerCase() &&
     password === expectedPassword
   ) {
     const cookieStore = await cookies();
-    cookieStore.set(DEMO_SESSION_COOKIE, gerarTokenDemoAssinado(), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    });
+    cookieStore.set(
+      DEMO_SESSION_COOKIE,
+      gerarTokenDemoAssinado(expectedEmail, expectedPassword),
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 8,
+      }
+    );
     revalidatePath("/admin");
     return { ok: true };
   }
@@ -185,12 +201,15 @@ export async function verificarAdminAutenticado(): Promise<{
 
   const cookieStore = await cookies();
   const demoSession = cookieStore.get(DEMO_SESSION_COOKIE)?.value;
-  if (validarTokenDemo(demoSession)) {
-    return {
-      autenticado: true,
-      email: process.env.ADMIN_DEMO_EMAIL || "admin@rsdigital.com.br",
-      modoDemo: !isSupabaseConfigured(),
-    };
+  if (demoSession) {
+    const credAtiva = await obterCredenciaisAdminServer();
+    if (validarTokenDemo(demoSession, credAtiva.email, credAtiva.password)) {
+      return {
+        autenticado: true,
+        email: credAtiva.email,
+        modoDemo: !isSupabaseConfigured(),
+      };
+    }
   }
 
   return {
@@ -432,16 +451,53 @@ export async function obterDadosAdminAction() {
 
 export async function validarSenhaOrcamentoAction(senha: string) {
   const senhaLimpa = (senha || "").trim();
-  const senhaEsperada =
-    process.env.ADMIN_ACCESS_PASSWORD ||
-    process.env.ADMIN_DEMO_PASSWORD ||
-    "rsdigital123";
+  const credAtiva = await obterCredenciaisAdminServer();
+  const senhaEsperada = credAtiva.password;
 
   if (!senhaLimpa || senhaLimpa !== senhaEsperada) {
     return { ok: false, erro: "Senha incorreta. Informe a senha do administrador." };
   }
 
   return { ok: true };
+}
+
+export async function alterarSenhaAdminAction(dados: {
+  senhaAtual: string;
+  novaSenha: string;
+  confirmarSenha: string;
+}) {
+  const auth = await garantirAdminAutenticado();
+  if (!auth.permitido) return { ok: false, erro: auth.erro };
+
+  if ((dados.novaSenha || "").trim() !== (dados.confirmarSenha || "").trim()) {
+    return {
+      ok: false,
+      erro: "A confirmação da nova senha não confere.",
+    };
+  }
+
+  const res = await alterarSenhaAdminServer({
+    senhaAtual: dados.senhaAtual,
+    novaSenha: dados.novaSenha,
+  });
+
+  if (res.ok && res.email && res.password) {
+    const cookieStore = await cookies();
+    cookieStore.set(
+      DEMO_SESSION_COOKIE,
+      gerarTokenDemoAssinado(res.email, res.password),
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 8,
+      }
+    );
+    revalidatePath("/admin");
+  }
+
+  return { ok: res.ok, erro: res.erro };
 }
 
 export async function salvarOrcamentoAction(

@@ -22,6 +22,10 @@ export interface LocalDatabaseState {
   orcamentos?: OrcamentoRegistrado[];
   lancamentos: LancamentoFinanceiro[];
   ultimoNumeroSeq: number;
+  adminCredenciais?: {
+    email: string;
+    password: string;
+  };
 }
 
 export const SERIES_PADRAO_ESCOLARES: {

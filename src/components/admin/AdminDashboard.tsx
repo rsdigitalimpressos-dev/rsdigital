@@ -41,6 +41,7 @@ import {
   BookOpen,
   SlidersHorizontal,
   Menu,
+  Lock,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { LogoIcon } from "@/components/brand/LogoIcon";
@@ -80,6 +81,7 @@ import {
 import {
   alternarItemImpressoAction,
   alternarPagoPedidoAction,
+  alterarSenhaAdminAction,
   atualizarStatusOrcamentoAction,
   atualizarStatusPedidoAction,
   duplicarSerieAction,
@@ -291,6 +293,16 @@ export function AdminDashboard({
   const [viewMode, setViewMode] = useState<ViewMode>("lista");
   const [sincronizando, setSincronizando] = useState(false);
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+
+  // Estados de alteração de senha do sistema (Configurações)
+  const [senhaAtualInput, setSenhaAtualInput] = useState("");
+  const [novaSenhaInput, setNovaSenhaInput] = useState("");
+  const [confirmarSenhaInput, setConfirmarSenhaInput] = useState("");
+  const [salvandoSenha, setSalvandoSenha] = useState(false);
+  const [avisoSenha, setAvisoSenha] = useState<{
+    tipo: "ok" | "erro";
+    texto: string;
+  } | null>(null);
 
   // Estados locais sincronizados para resposta instantânea na UI
   const [pedidos, setPedidos] = useState<Pedido[]>(initialPedidos);
@@ -2033,45 +2045,28 @@ export function AdminDashboard({
             </div>
           </nav>
 
-          {/* Rodapé da Sidebar */}
+          {/* Rodapé da Sidebar — Apenas Botão de Sair */}
           <div
             className={`border-t border-white/10 bg-black/20 ${
-              recolhidaEfetiva
-                ? "p-2.5 flex flex-col items-center gap-2"
-                : "p-3.5 space-y-2.5"
+              recolhidaEfetiva ? "p-2.5 flex justify-center" : "p-3"
             }`}
           >
-            {!recolhidaEfetiva && (
-              <div className="flex items-center gap-2 text-[11px]">
-                <Database className="w-3.5 h-3.5 text-brand-yellow shrink-0" />
-                <span className="text-white/80 truncate">
-                  {modoSupabase ? "Supabase" : "Banco Local"}
-                </span>
-              </div>
-            )}
-
-            <div
-              className={`flex items-center ${
-                recolhidaEfetiva ? "justify-center" : "justify-between gap-2"
+            <button
+              type="button"
+              onClick={async () => {
+                await logoutAdminAction();
+                router.refresh();
+              }}
+              className={`w-full flex items-center rounded-lg bg-white/10 hover:bg-brand-magenta text-white text-xs font-semibold transition-colors cursor-pointer ${
+                recolhidaEfetiva
+                  ? "justify-center p-2.5"
+                  : "justify-center gap-2 px-3 py-2.5"
               }`}
+              title="Sair do sistema"
             >
-              {!recolhidaEfetiva && (
-                <p className="text-[11px] font-medium text-white/80 truncate">
-                  {adminEmail}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={async () => {
-                  await logoutAdminAction();
-                  router.refresh();
-                }}
-                className="p-2 rounded-lg bg-white/10 hover:bg-brand-magenta text-white transition-colors shrink-0 cursor-pointer"
-                title="Sair do painel"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
+              <LogOut className="w-4 h-4 shrink-0" />
+              {!recolhidaEfetiva && <span>Sair</span>}
+            </button>
           </div>
         </aside>
 
@@ -8053,238 +8048,356 @@ export function AdminDashboard({
             )}
 
             {/* ===============================================================
-                SEÇÃO 5: CONFIGURAÇÕES DA LOJA, TAXAS E MENSAGEM DE PRONTO
+                SEÇÃO 5: CONFIGURAÇÕES DA LOJA, TAXAS, MENSAGEM E SENHA
             =============================================================== */}
             {section === "config" && (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setSalvandoConfig(true);
-                  try {
-                    const res = await salvarConfigAction({
-                      nome_loja: config.nome_loja,
-                      whatsapp_loja: config.whatsapp_loja,
-                      prazo_dias: config.prazo_dias,
-                      endereco_retirada: config.endereco_retirada,
-                      horario_retirada: config.horario_retirada,
-                      taxas_parcelamento: config.taxas_parcelamento,
-                      mensagem_pronto: config.mensagem_pronto,
-                    });
-                    if (!res.ok) {
-                      exibirAviso(
-                        "erro",
-                        res.erro || "Erro ao salvar configurações."
-                      );
-                      return;
+              <div className="space-y-6 max-w-4xl">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setSalvandoConfig(true);
+                    try {
+                      const res = await salvarConfigAction({
+                        nome_loja: config.nome_loja,
+                        whatsapp_loja: config.whatsapp_loja,
+                        prazo_dias: config.prazo_dias,
+                        endereco_retirada: config.endereco_retirada,
+                        horario_retirada: config.horario_retirada,
+                        taxas_parcelamento: config.taxas_parcelamento,
+                        mensagem_pronto: config.mensagem_pronto,
+                      });
+                      if (!res.ok) {
+                        exibirAviso(
+                          "erro",
+                          res.erro || "Erro ao salvar configurações."
+                        );
+                        return;
+                      }
+                      if (res.config) setConfig(res.config);
+                      exibirAviso("ok", "Configurações salvas com sucesso!");
+                    } finally {
+                      setSalvandoConfig(false);
                     }
-                    if (res.config) setConfig(res.config);
-                    exibirAviso("ok", "Configurações salvas com sucesso!");
-                  } finally {
-                    setSalvandoConfig(false);
-                  }
-                }}
-                className="bg-white border border-brand-border/80 rounded-2xl p-6 space-y-6 shadow-xs max-w-4xl"
-              >
-                <div className="border-b border-brand-border pb-3">
-                  <h2 className="text-base font-extrabold text-brand-ink">
-                    Dados da Gráfica, Retirada e Parcelamento
-                  </h2>
-                  <p className="text-xs text-brand-muted mt-0.5">
-                    Essas informações aparecem automaticamente no formulário de
-                    pedidos e nas notificações enviadas pelo WhatsApp.
-                  </p>
-                </div>
+                  }}
+                  className="bg-white border border-brand-border/80 rounded-2xl p-6 space-y-6 shadow-xs"
+                >
+                  <div className="border-b border-brand-border pb-3">
+                    <h2 className="text-base font-extrabold text-brand-ink">
+                      Dados da Gráfica, Retirada e Parcelamento
+                    </h2>
+                    <p className="text-xs text-brand-muted mt-0.5">
+                      Essas informações aparecem automaticamente no formulário de
+                      pedidos e nas notificações enviadas pelo WhatsApp.
+                    </p>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  <div>
-                    <label className="block font-bold mb-1.5">
-                      Nome da Loja
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={config.nome_loja}
-                      onChange={(e) =>
-                        setConfig((c) => ({ ...c, nome_loja: e.target.value }))
-                      }
-                      className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold mb-1.5">
-                      WhatsApp da Loja (com DDD)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={maskWhatsApp(config.whatsapp_loja)}
-                      onChange={(e) =>
-                        setConfig((c) => ({
-                          ...c,
-                          whatsapp_loja: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold mb-1.5">
-                      Prazo padrão de retirada (dias corridos)
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      required
-                      value={config.prazo_dias}
-                      onChange={(e) =>
-                        setConfig((c) => ({
-                          ...c,
-                          prazo_dias: Number(e.target.value),
-                        }))
-                      }
-                      className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <label className="block font-bold mb-1.5">
-                      Endereço de Retirada
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={config.endereco_retirada}
-                      onChange={(e) =>
-                        setConfig((c) => ({
-                          ...c,
-                          endereco_retirada: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold mb-1.5">
-                      Horário de Atendimento / Retirada
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={config.horario_retirada}
-                      onChange={(e) =>
-                        setConfig((c) => ({
-                          ...c,
-                          horario_retirada: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
-                    />
-                  </div>
-                </div>
-
-                {/* Taxas de parcelamento 2x a 12x */}
-                <div className="space-y-2.5">
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-brand-ink">
-                    Taxas de Juros do Parcelamento (% por número de parcelas)
-                  </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 text-xs">
-                    {Array.from({ length: 11 }, (_, i) => String(i + 2)).map(
-                      (parcelaKey) => (
-                        <div
-                          key={parcelaKey}
-                          className="border border-brand-border rounded-xl p-2.5 bg-gray-50/60"
-                        >
-                          <span className="block font-bold text-brand-muted mb-1">
-                            {parcelaKey}x (%)
-                          </span>
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            value={config.taxas_parcelamento[parcelaKey] ?? 0}
-                            onChange={(e) =>
-                              setConfig((c) => ({
-                                ...c,
-                                taxas_parcelamento: {
-                                  ...c.taxas_parcelamento,
-                                  [parcelaKey]: Number(e.target.value),
-                                },
-                              }))
-                            }
-                            className="w-full px-2 py-1.5 bg-white border border-brand-border rounded-lg font-semibold"
-                          />
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                {/* Modelo da mensagem de "Pronto" */}
-                <div className="space-y-2 text-xs">
-                  <label className="block font-bold">
-                    Modelo da mensagem de WhatsApp (&ldquo;Pedido Pronto&rdquo;)
-                  </label>
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-brand-muted">
-                    <span>Clique para inserir variável:</span>
-                    {[
-                      "{responsavel}",
-                      "{serie}",
-                      "{colegio}",
-                      "{numero}",
-                      "{endereco}",
-                      "{horario}",
-                    ].map((variavel) => (
-                      <button
-                        key={variavel}
-                        type="button"
-                        onClick={() =>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        Nome da Loja
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={config.nome_loja}
+                        onChange={(e) =>
                           setConfig((c) => ({
                             ...c,
-                            mensagem_pronto: `${c.mensagem_pronto} ${variavel}`,
+                            nome_loja: e.target.value,
                           }))
                         }
-                        className="px-2 py-0.5 rounded bg-gray-100 hover:bg-brand-cyan/15 text-brand-ink font-mono"
-                      >
-                        {variavel}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    rows={4}
-                    value={config.mensagem_pronto}
-                    onChange={(e) =>
-                      setConfig((c) => ({
-                        ...c,
-                        mensagem_pronto: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3.5 py-2.5 border border-brand-border rounded-xl"
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4 pt-2">
-                  <button
-                    type="submit"
-                    disabled={salvandoConfig}
-                    className="px-6 py-3 bg-brand-magenta hover:bg-brand-magenta/90 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm"
-                  >
-                    {salvandoConfig ? "Salvando..." : "Salvar Configurações"}
-                  </button>
-                  {avisoPainel && (
-                    <div
-                      className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-                        avisoPainel.tipo === "ok"
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                          : "bg-red-50 border-red-200 text-red-700"
-                      }`}
-                    >
-                      <span>{avisoPainel.texto}</span>
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
                     </div>
-                  )}
-                </div>
-              </form>
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        WhatsApp da Loja (com DDD)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={maskWhatsApp(config.whatsapp_loja)}
+                        onChange={(e) =>
+                          setConfig((c) => ({
+                            ...c,
+                            whatsapp_loja: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        Prazo padrão de retirada (dias corridos)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        value={config.prazo_dias}
+                        onChange={(e) =>
+                          setConfig((c) => ({
+                            ...c,
+                            prazo_dias: Number(e.target.value),
+                          }))
+                        }
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        Endereço de Retirada
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={config.endereco_retirada}
+                        onChange={(e) =>
+                          setConfig((c) => ({
+                            ...c,
+                            endereco_retirada: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        Horário de Atendimento / Retirada
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={config.horario_retirada}
+                        onChange={(e) =>
+                          setConfig((c) => ({
+                            ...c,
+                            horario_retirada: e.target.value,
+                          }))
+                        }
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Taxas de parcelamento 2x a 12x */}
+                  <div className="space-y-2.5">
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-brand-ink">
+                      Taxas de Juros do Parcelamento (% por número de parcelas)
+                    </label>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 text-xs">
+                      {Array.from({ length: 11 }, (_, i) => String(i + 2)).map(
+                        (parcelaKey) => (
+                          <div
+                            key={parcelaKey}
+                            className="border border-brand-border rounded-xl p-2.5 bg-gray-50/60"
+                          >
+                            <span className="block font-bold text-brand-muted mb-1">
+                              {parcelaKey}x (%)
+                            </span>
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              value={config.taxas_parcelamento[parcelaKey] ?? 0}
+                              onChange={(e) =>
+                                setConfig((c) => ({
+                                  ...c,
+                                  taxas_parcelamento: {
+                                    ...c.taxas_parcelamento,
+                                    [parcelaKey]: Number(e.target.value),
+                                  },
+                                }))
+                              }
+                              className="w-full px-2 py-1.5 bg-white border border-brand-border rounded-lg font-semibold"
+                            />
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Modelo da mensagem de "Pronto" */}
+                  <div className="space-y-2 text-xs">
+                    <label className="block font-bold">
+                      Modelo da mensagem de WhatsApp (&ldquo;Pedido Pronto&rdquo;)
+                    </label>
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-brand-muted">
+                      <span>Clique para inserir variável:</span>
+                      {[
+                        "{responsavel}",
+                        "{serie}",
+                        "{colegio}",
+                        "{numero}",
+                        "{endereco}",
+                        "{horario}",
+                      ].map((variavel) => (
+                        <button
+                          key={variavel}
+                          type="button"
+                          onClick={() =>
+                            setConfig((c) => ({
+                              ...c,
+                              mensagem_pronto: `${c.mensagem_pronto} ${variavel}`,
+                            }))
+                          }
+                          className="px-2 py-0.5 rounded bg-gray-100 hover:bg-brand-cyan/15 text-brand-ink font-mono"
+                        >
+                          {variavel}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      rows={4}
+                      value={config.mensagem_pronto}
+                      onChange={(e) =>
+                        setConfig((c) => ({
+                          ...c,
+                          mensagem_pronto: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3.5 py-2.5 border border-brand-border rounded-xl"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 pt-2">
+                    <button
+                      type="submit"
+                      disabled={salvandoConfig}
+                      className="px-6 py-3 bg-brand-magenta hover:bg-brand-magenta/90 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer"
+                    >
+                      {salvandoConfig ? "Salvando..." : "Salvar Configurações"}
+                    </button>
+                    {avisoPainel && (
+                      <div
+                        className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                          avisoPainel.tipo === "ok"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                            : "bg-red-50 border-red-200 text-red-700"
+                        }`}
+                      >
+                        <span>{avisoPainel.texto}</span>
+                      </div>
+                    )}
+                  </div>
+                </form>
+
+                {/* Card: Alterar Senha do Sistema */}
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setAvisoSenha(null);
+                    setSalvandoSenha(true);
+                    try {
+                      const res = await alterarSenhaAdminAction({
+                        senhaAtual: senhaAtualInput,
+                        novaSenha: novaSenhaInput,
+                        confirmarSenha: confirmarSenhaInput,
+                      });
+                      if (!res.ok) {
+                        setAvisoSenha({
+                          tipo: "erro",
+                          texto: res.erro || "Erro ao alterar senha.",
+                        });
+                        return;
+                      }
+                      setSenhaAtualInput("");
+                      setNovaSenhaInput("");
+                      setConfirmarSenhaInput("");
+                      setAvisoSenha({
+                        tipo: "ok",
+                        texto: "Senha do sistema alterada com sucesso!",
+                      });
+                    } finally {
+                      setSalvandoSenha(false);
+                    }
+                  }}
+                  className="bg-white border border-brand-border/80 rounded-2xl p-6 space-y-5 shadow-xs"
+                >
+                  <div className="border-b border-brand-border pb-3 flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-extrabold text-brand-ink">
+                        Segurança · Alterar Senha do Sistema
+                      </h2>
+                      <p className="text-xs text-brand-muted">
+                        Defina uma nova senha de acesso ao painel administrativo.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        Senha Atual
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Digite a senha atual"
+                        value={senhaAtualInput}
+                        onChange={(e) => setSenhaAtualInput(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        Nova Senha
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        placeholder="Mínimo 6 caracteres"
+                        value={novaSenhaInput}
+                        onChange={(e) => setNovaSenhaInput(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold mb-1.5">
+                        Confirmar Nova Senha
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        placeholder="Repita a nova senha"
+                        value={confirmarSenhaInput}
+                        onChange={(e) => setConfirmarSenhaInput(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-brand-border rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 pt-1">
+                    <button
+                      type="submit"
+                      disabled={salvandoSenha}
+                      className="px-6 py-3 bg-brand-ink hover:bg-brand-ink/90 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer"
+                    >
+                      {salvandoSenha ? "Alterando..." : "Alterar Senha"}
+                    </button>
+
+                    {avisoSenha && (
+                      <div
+                        className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                          avisoSenha.tipo === "ok"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                            : "bg-red-50 border-red-200 text-red-700"
+                        }`}
+                      >
+                        <span>{avisoSenha.texto}</span>
+                      </div>
+                    )}
+                  </div>
+                </form>
+              </div>
             )}
 
             {/* ===============================================================

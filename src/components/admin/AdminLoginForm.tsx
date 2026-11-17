@@ -20,7 +20,7 @@ interface AdminLoginFormProps {
   modoDemo: boolean;
 }
 
-export function AdminLoginForm({}: AdminLoginFormProps) {
+export function AdminLoginForm({ }: AdminLoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -168,9 +168,10 @@ export function AdminLoginForm({}: AdminLoginFormProps) {
                     id="email"
                     type="email"
                     required
+                    autoComplete="off"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@rsdigital.com.br"
+                    placeholder="Digite seu e-mail"
                     className="w-full pl-10 pr-3.5 py-3 text-sm bg-white border border-brand-border rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-cyan/25 focus:border-brand-cyan transition-all"
                   />
                 </div>
